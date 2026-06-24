@@ -143,6 +143,10 @@ def embed_one(src_xlsx, out_xlsx, sheet_name, pdf, png, geo):
         sh = _find_sheet(wb, sheet_name)
         obj = sh.OLEObjects().Add(ClassType="Package", Filename=os.path.abspath(pdf), Link=False,
                                   DisplayAsIcon=True, IconFileName=os.path.abspath(png), IconIndex=0)
+        try:
+            obj.ShapeRange.LockAspectRatio = 0  # 关宽高比锁定(否则设高时宽按图标比例反推放大)
+        except Exception:
+            pass
         obj.Left, obj.Top, obj.Width, obj.Height = left, top, width, height
         if os.path.exists(out_xlsx):
             os.remove(out_xlsx)
@@ -168,6 +172,10 @@ def embed_many(src_xlsx, out_xlsx, specs):
             obj = sh.OLEObjects().Add(
                 ClassType="Package", Filename=os.path.abspath(spec["pdf"]), Link=False,
                 DisplayAsIcon=True, IconFileName=os.path.abspath(spec["icon"]), IconIndex=0)
+            try:
+                obj.ShapeRange.LockAspectRatio = 0  # 关宽高比锁定; 否则设高时宽按巨型图标比例反推放大→重叠
+            except Exception:
+                pass
             # 两种定位: 结构驱动(单元格行列→读该格Left/Top, 材质表用) / 绝对(L,T, 其他表用)
             if spec.get("row") and spec.get("col"):
                 cell = sh.Cells(spec["row"], spec["col"])

@@ -46,8 +46,11 @@ def main():
     ai = 0
     for spec in specs:
         if spec["sheet"].strip() == MAT_SHEET.strip():
-            spec["row"], spec["col"] = mt_anchors[ai]
+            spec["row"], spec["col"] = mt_anchors[ai]   # 材质表: 结构驱动(单元格定位)
             ai += 1
+        else:
+            spec.pop("row", None)                        # 其他表: 用 golden 绝对 L/T
+            spec.pop("col", None)
 
     # 预览图标(每个源 PDF 首页渲染) + 检测空/损坏源
     import fitz
