@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hitl.build import build_upto
 from hitl.harness import assert_no_external_links
 from hitl.ole_assemble import make_icon, embed_many, count_ole, verify_open
+from hitl.material_table import material_ole_anchors, MAT_SHEET
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -39,6 +40,15 @@ def main():
     os.makedirs(ICON_DIR, exist_ok=True)
     specs = json.load(open(MANIFEST, encoding="utf-8"))
 
+    # ⭐材质表 OLE 位置由结构推导(compute_layout 块首行 + K/L/Y 列), 非套 golden 绝对位置
+    mt_specs = [s for s in specs if s["sheet"].strip() == MAT_SHEET.strip()]
+    mt_anchors = material_ole_anchors(DATA["bom"], mt_specs)
+    ai = 0
+    for spec in specs:
+        if spec["sheet"].strip() == MAT_SHEET.strip():
+            spec["row"], spec["col"] = mt_anchors[ai]
+            ai += 1
+
     # 预览图标(每个源 PDF 首页渲染) + 检测空/损坏源
     import fitz
     bad = []
@@ -56,6 +66,7 @@ def main():
         print(f"⚠️ {len(bad)} 个源PDF 空/损坏(用占位图标, 待查抽取):")
         for b in bad:
             print("   ", b)
+    print(f"材质表 OLE 结构落位(块首行+K/L/Y): {sorted(set(mt_anchors))}")
 
     # 段一：填完所有 cell（无 OLE）
     build_upto(TPL, CELL, DATA, upto=4)

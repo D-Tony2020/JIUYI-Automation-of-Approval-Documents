@@ -164,58 +164,104 @@ def _clear_region(ws, top, bottom):
             cell.value = None
 
 
-def inject_data(ws, bom, start_row=DATA_TOP):
-    """三层嵌套合并注入：零件(A/B/C) → 材质(D/E/F) → 报告块(K/L/M-V/W/X/AB/AC…)。
+# 报告类型 → 材质表里承载该报告 OLE 的列（实证7样本: 恒为 K/L/Y）
+OLE_COL = {"MSDS": 11, "REACH": 12, "RoHS": 25}   # K=MSDS, L=Reach, Y=RoHS报告
 
-    报告块支持多色：一材质可含多份报告，每份盖住自己的成份子组(如 PVC 黑+红)。返回数据末行。
+
+def compute_layout(bom, start_row=DATA_TOP):
+    """⭐结构搭建步骤(文本填入 + OLE装配 共用): 由 BOM 推导材质表单元格结构。
+
+    返回 {parts:[{idx, first, last, part, materials:[{first,last,material,
+          blocks:[{first,last,block}]}]}], start_row, data_end}。
+    每零件/材质/报告块的行区间据成份数动态算出——不假设固定布局。
     """
     r = start_row
+    parts = []
     for idx, part in enumerate(bom, 1):
-        ps = r
+        pf = r
+        mats = []
         for mat in part["materials"]:
-            ms = r
+            mf = r
+            blks = []
             for block in mat["blocks"]:
-                bs = r
-                for comp in block["成份"]:
-                    ws.cell(r, 7, comp.get("成份名称", ""))
-                    ws.cell(r, 8, comp.get("CAS", ""))
-                    ws.cell(r, 10, comp.get("重量%", ""))
-                    r += 1
-                be = r - 1
-                # 报告块级：RoHS十项 + 报告号/日期 + 合规占位
+                bf = r
+                r += max(1, len(block.get("成份", [])))
+                blks.append({"first": bf, "last": r - 1, "block": block})
+            mats.append({"first": mf, "last": r - 1, "material": mat, "blocks": blks})
+        parts.append({"idx": idx, "first": pf, "last": r - 1, "part": part, "materials": mats})
+    return {"parts": parts, "start_row": start_row, "data_end": r - 1}
+
+
+def material_ole_anchors(bom, golden_ole, start_row=DATA_TOP):
+    """⭐OLE装配也由结构驱动: golden 材质表OLE → 本单结构落位 [(row, col)]。
+
+    golden 行 → 所属报告块 → 本单该块首行(compute_layout 算出)；列保持 K/L/Y。
+    同(块,列)多个则块内顺延。换产品时块行随 BOM 变, OLE 位置自动跟着对。
+    """
+    layout = compute_layout(bom, start_row)
+    blocks = [(B["first"], B["last"]) for P in layout["parts"]
+              for M in P["materials"] for B in M["blocks"]]
+
+    def block_first(grow):
+        for f, l in blocks:
+            if f <= grow <= l:
+                return f
+        return min(blocks, key=lambda fl: abs(fl[0] - grow))[0]
+
+    used = {}
+    res = []
+    for g in golden_ole:
+        bf = block_first(g["row"])
+        key = (bf, g["col"])
+        rr = bf + used.get(key, 0)
+        used[key] = used.get(key, 0) + 1
+        res.append((rr, g["col"]))
+    return res
+
+
+def inject_data(ws, bom, start_row=DATA_TOP):
+    """按 compute_layout 的结构三层嵌套注入(零件A/B/C → 材质D/E/F → 报告块K..AD)。返回数据末行。"""
+    layout = compute_layout(bom, start_row)
+    for P in layout["parts"]:
+        for M in P["materials"]:
+            for B in M["blocks"]:
+                block, bf, be = B["block"], B["first"], B["last"]
+                for j, comp in enumerate(block.get("成份", [])):
+                    rr = bf + j
+                    ws.cell(rr, 7, comp.get("成份名称", ""))
+                    ws.cell(rr, 8, comp.get("CAS", ""))
+                    ws.cell(rr, 10, comp.get("重量%", ""))
                 for k in ROHS_KEYS:
-                    ws.cell(bs, ROHS_COL[k], block.get("RoHS", {}).get(k, ""))
-                ws.cell(bs, 23, block.get("报告日期", ""))
-                ws.cell(bs, 24, block.get("报告编号", ""))
-                ws.cell(bs, 9, "/")       # I weight(g)
-                ws.cell(bs, 26, "/")      # Z Br
-                ws.cell(bs, 27, "/")      # AA Cl
-                ws.cell(bs, 28, "Yes")    # AB 是否符合
-                ws.cell(bs, 29, "否")      # AC 是否RoHS排外
-                ws.cell(bs, 30, "/")      # AD 排除项次
-                if be > bs:
+                    ws.cell(bf, ROHS_COL[k], block.get("RoHS", {}).get(k, ""))
+                ws.cell(bf, 23, block.get("报告日期", ""))
+                ws.cell(bf, 24, block.get("报告编号", ""))
+                ws.cell(bf, 9, "/")
+                ws.cell(bf, 26, "/")
+                ws.cell(bf, 27, "/")
+                ws.cell(bf, 28, "Yes")
+                ws.cell(bf, 29, "否")
+                ws.cell(bf, 30, "/")
+                if be > bf:
                     for c in BLOCK_MERGE_COLS:
-                        ws.merge_cells(start_row=bs, start_column=c, end_row=be, end_column=c)
-            me = r - 1
-            # 材质级：材质类别/材质/材质重量
-            ws.cell(ms, 4, mat.get("材质类别", ""))
-            ws.cell(ms, 5, mat.get("材质", ""))
-            ws.cell(ms, 6, "/")       # F 材质重量 占位
-            if me > ms:
+                        ws.merge_cells(start_row=bf, start_column=c, end_row=be, end_column=c)
+            mat, mf, me = M["material"], M["first"], M["last"]
+            ws.cell(mf, 4, mat.get("材质类别", ""))
+            ws.cell(mf, 5, mat.get("材质", ""))
+            ws.cell(mf, 6, "/")
+            if me > mf:
                 for c in MAT_MERGE_COLS:
-                    ws.merge_cells(start_row=ms, start_column=c, end_row=me, end_column=c)
-        pe = r - 1
-        # 零件级：项次/零件/供应商
-        ws.cell(ps, 1, idx)
-        ws.cell(ps, 2, part.get("零件", ""))
-        ws.cell(ps, 3, part.get("供应商", ""))
-        if pe > ps:
+                    ws.merge_cells(start_row=mf, start_column=c, end_row=me, end_column=c)
+        part, pf, pe = P["part"], P["first"], P["last"]
+        ws.cell(pf, 1, P["idx"])
+        ws.cell(pf, 2, part.get("零件", ""))
+        ws.cell(pf, 3, part.get("供应商", ""))
+        if pe > pf:
             for c in PART_MERGE_COLS:
-                ws.merge_cells(start_row=ps, start_column=c, end_row=pe, end_column=c)
-        for rr in range(ps, pe + 1):
+                ws.merge_cells(start_row=pf, start_column=c, end_row=pe, end_column=c)
+        for rr in range(pf, pe + 1):
             for cc in range(1, 31):
                 _style(ws, rr, cc)
-    return r - 1
+    return layout["data_end"]
 
 
 def place_bottom_block(ws, block, start_row):
