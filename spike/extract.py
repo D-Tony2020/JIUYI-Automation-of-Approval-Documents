@@ -33,6 +33,7 @@ def _call_llm(provider: str, prompt: str, model: str = None) -> dict:
     """
     import subprocess
     import tempfile
+    import time
 
     cfg = config.PROVIDERS[provider]
     key = config.get_api_key(provider)
@@ -51,17 +52,26 @@ def _call_llm(provider: str, prompt: str, model: str = None) -> dict:
     try:
         json.dump(body, bf, ensure_ascii=False)
         bf.close()
-        cmd = ["curl.exe", "-sS", "-m", "120", "--ssl-no-revoke", *proxy_args, url,
+        cmd = ["curl.exe", "-sS", "-m", "90", "--ssl-no-revoke", *proxy_args, url,
                "-H", f"Authorization: Bearer {key}",
                "-H", "Content-Type: application/json",
                "-d", f"@{bf.name}"]
-        out = subprocess.run(cmd, capture_output=True, timeout=130)
-        if out.returncode != 0:
-            raise RuntimeError(f"curl rc={out.returncode}: {out.stderr.decode('utf-8','ignore')[:200]}")
-        data = json.loads(out.stdout.decode("utf-8", "ignore"))
-        if "choices" not in data:
-            raise RuntimeError(f"接口返回异常: {str(data)[:300]}")
-        return _parse_json(data["choices"][0]["message"]["content"])
+        last = ""
+        for attempt in range(3):                       # 重试: 超时/限流多为瞬态
+            try:
+                out = subprocess.run(cmd, capture_output=True, timeout=100)
+            except Exception as e:
+                last = f"子进程超时:{e}"; time.sleep(3 + 5 * attempt); continue
+            if out.returncode != 0:
+                last = f"curl rc={out.returncode}: {out.stderr.decode('utf-8','ignore')[:120]}"
+                time.sleep(3 + 5 * attempt); continue
+            try:
+                data = json.loads(out.stdout.decode("utf-8", "ignore"))
+                return _parse_json(data["choices"][0]["message"]["content"])
+            except Exception as e:
+                last = f"解析失败:{e} 体:{out.stdout.decode('utf-8','ignore')[:120]}"
+                time.sleep(2); continue
+        raise RuntimeError(last)
     finally:
         os.unlink(bf.name)
 
