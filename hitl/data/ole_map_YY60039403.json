@@ -1,0 +1,398 @@
+[
+ {
+  "sheet": "2.图纸（生久&供应商）",
+  "bin": "oleObject1.bin",
+  "pdf": "本单输入\\ole\\2.图纸（生久&供应商）__oleObject1.pdf",
+  "L": 183.1,
+  "T": 266.2,
+  "W": 151.5,
+  "H": 41.8
+ },
+ {
+  "sheet": "3.供应商部件承认书",
+  "bin": "oleObject2.bin",
+  "pdf": "本单输入\\ole\\3.供应商部件承认书__oleObject2.pdf",
+  "L": 323.9,
+  "T": 313.8,
+  "W": 80.2,
+  "H": 42.5
+ },
+ {
+  "sheet": "3.供应商部件承认书",
+  "bin": "oleObject2.bin",
+  "pdf": "本单输入\\ole\\3.供应商部件承认书__oleObject2.pdf",
+  "L": 225.4,
+  "T": 315.0,
+  "W": 74.1,
+  "H": 41.2
+ },
+ {
+  "sheet": "3.供应商部件承认书",
+  "bin": "oleObject3.bin",
+  "pdf": "本单输入\\ole\\3.供应商部件承认书__oleObject3.pdf",
+  "L": 112.4,
+  "T": 317.0,
+  "W": 83.8,
+  "H": 41.8
+ },
+ {
+  "sheet": "6.信赖性测试报告",
+  "bin": "oleObject5.bin",
+  "pdf": "本单输入\\ole\\6.信赖性测试报告__oleObject5.pdf",
+  "L": 272.9,
+  "T": 307.8,
+  "W": 107.2,
+  "H": 42.5
+ },
+ {
+  "sheet": "6.信赖性测试报告",
+  "bin": "oleObject5.bin",
+  "pdf": "本单输入\\ole\\6.信赖性测试报告__oleObject5.pdf",
+  "L": 113.3,
+  "T": 308.0,
+  "W": 125.2,
+  "H": 42.1
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject7.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject7.pdf",
+  "L": 638.1,
+  "T": 1039.8,
+  "W": 56.2,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject7.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject7.pdf",
+  "L": 633.6,
+  "T": 624.5,
+  "W": 63.0,
+  "H": 42.7
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject8.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject8.pdf",
+  "L": 633.6,
+  "T": 698.7,
+  "W": 63.8,
+  "H": 42.8
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject8.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject8.pdf",
+  "L": 639.6,
+  "T": 758.7,
+  "W": 56.2,
+  "H": 36.3
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject9.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject9.pdf",
+  "L": 635.1,
+  "T": 842.5,
+  "W": 63.0,
+  "H": 42.8
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject9.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject9.pdf",
+  "L": 635.1,
+  "T": 973.8,
+  "W": 60.8,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject10.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject10.pdf",
+  "L": 637.3,
+  "T": 440.7,
+  "W": 55.5,
+  "H": 41.5
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject10.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject10.pdf",
+  "L": 635.5,
+  "T": 554.9,
+  "W": 51.8,
+  "H": 46.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject11.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject11.pdf",
+  "L": 708.5,
+  "T": 1039.8,
+  "W": 63.0,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject11.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject11.pdf",
+  "L": 1306.9,
+  "T": 1039.8,
+  "W": 58.5,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject12.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject12.pdf",
+  "L": 709.2,
+  "T": 657.5,
+  "W": 60.8,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject12.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject12.pdf",
+  "L": 1306.9,
+  "T": 625.2,
+  "W": 55.5,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject13.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject13.pdf",
+  "L": 1307.7,
+  "T": 694.2,
+  "W": 56.2,
+  "H": 42.8
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject13.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject13.pdf",
+  "L": 712.4,
+  "T": 389.4,
+  "W": 56.0,
+  "H": 41.1
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject14.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject14.pdf",
+  "L": 712.5,
+  "T": 483.4,
+  "W": 55.0,
+  "H": 41.1
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject14.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject14.pdf",
+  "L": 1308.8,
+  "T": 397.4,
+  "W": 49.5,
+  "H": 41.2
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject15.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject15.pdf",
+  "L": 713.7,
+  "T": 968.5,
+  "W": 55.5,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject15.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject15.pdf",
+  "L": 1306.2,
+  "T": 966.3,
+  "W": 54.8,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject16.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject16.pdf",
+  "L": 714.5,
+  "T": 761.0,
+  "W": 50.2,
+  "H": 29.5
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject16.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject16.pdf",
+  "L": 716.7,
+  "T": 844.0,
+  "W": 54.8,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject17.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject17.pdf",
+  "L": 1313.7,
+  "T": 764.0,
+  "W": 52.5,
+  "H": 29.5
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject17.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject17.pdf",
+  "L": 1312.2,
+  "T": 845.5,
+  "W": 45.8,
+  "H": 42.0
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject18.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject18.pdf",
+  "L": 1305.9,
+  "T": 488.1,
+  "W": 57.8,
+  "H": 41.4
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject18.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject18.pdf",
+  "L": 712.0,
+  "T": 558.6,
+  "W": 52.0,
+  "H": 41.4
+ },
+ {
+  "sheet": "7.材质成分展开表 ",
+  "bin": "oleObject19.bin",
+  "pdf": "本单输入\\ole\\7.材质成分展开表__oleObject19.pdf",
+  "L": 1308.7,
+  "T": 556.0,
+  "W": 50.3,
+  "H": 41.4
+ },
+ {
+  "sheet": "8.材质证明书",
+  "bin": "oleObject32.bin",
+  "pdf": "本单输入\\ole\\8.材质证明书__oleObject32.pdf",
+  "L": 94.3,
+  "T": 504.8,
+  "W": 66.0,
+  "H": 50.0
+ },
+ {
+  "sheet": "8.材质证明书",
+  "bin": "oleObject32.bin",
+  "pdf": "本单输入\\ole\\8.材质证明书__oleObject32.pdf",
+  "L": 146.1,
+  "T": 342.8,
+  "W": 61.5,
+  "H": 41.8
+ },
+ {
+  "sheet": "8.材质证明书",
+  "bin": "oleObject33.bin",
+  "pdf": "本单输入\\ole\\8.材质证明书__oleObject33.pdf",
+  "L": 257.9,
+  "T": 284.0,
+  "W": 57.0,
+  "H": 41.0
+ },
+ {
+  "sheet": "8.材质证明书",
+  "bin": "oleObject33.bin",
+  "pdf": "本单输入\\ole\\8.材质证明书__oleObject33.pdf",
+  "L": 326.9,
+  "T": 281.0,
+  "W": 58.5,
+  "H": 41.0
+ },
+ {
+  "sheet": "8.材质证明书",
+  "bin": "oleObject34.bin",
+  "pdf": "本单输入\\ole\\8.材质证明书__oleObject34.pdf",
+  "L": 116.1,
+  "T": 419.7,
+  "W": 89.2,
+  "H": 41.0
+ },
+ {
+  "sheet": "8.材质证明书",
+  "bin": "oleObject34.bin",
+  "pdf": "本单输入\\ole\\8.材质证明书__oleObject34.pdf",
+  "L": 104.8,
+  "T": 284.7,
+  "W": 66.8,
+  "H": 42.5
+ },
+ {
+  "sheet": "8.材质证明书",
+  "bin": "oleObject35.bin",
+  "pdf": "本单输入\\ole\\8.材质证明书__oleObject35.pdf",
+  "L": 227.9,
+  "T": 340.6,
+  "W": 97.5,
+  "H": 42.5
+ },
+ {
+  "sheet": "8.材质证明书",
+  "bin": "oleObject35.bin",
+  "pdf": "本单输入\\ole\\8.材质证明书__oleObject35.pdf",
+  "L": 182.9,
+  "T": 284.7,
+  "W": 63.8,
+  "H": 42.5
+ },
+ {
+  "sheet": "9.UL 证明",
+  "bin": "oleObject40.bin",
+  "pdf": "本单输入\\ole\\9.UL 证明__oleObject40.pdf",
+  "L": 221.1,
+  "T": 279.5,
+  "W": 72.8,
+  "H": 50.7
+ },
+ {
+  "sheet": "9.UL 证明",
+  "bin": "oleObject40.bin",
+  "pdf": "本单输入\\ole\\9.UL 证明__oleObject40.pdf",
+  "L": 102.6,
+  "T": 278.7,
+  "W": 81.8,
+  "H": 52.2
+ },
+ {
+  "sheet": "9.UL 证明",
+  "bin": "oleObject41.bin",
+  "pdf": "本单输入\\ole\\9.UL 证明__oleObject41.pdf",
+  "L": 344.9,
+  "T": 282.5,
+  "W": 72.0,
+  "H": 51.5
+ },
+ {
+  "sheet": "11.包装规范",
+  "bin": "oleObject43.bin",
+  "pdf": "本单输入\\ole\\11.包装规范__oleObject43.pdf",
+  "L": 207.6,
+  "T": 271.2,
+  "W": 111.8,
+  "H": 60.5
+ },
+ {
+  "sheet": "12.出货报告＆样品",
+  "bin": "oleObject44.bin",
+  "pdf": "本单输入\\ole\\12.出货报告＆样品__oleObject44.pdf",
+  "L": 192.8,
+  "T": 261.0,
+  "W": 159.0,
+  "H": 41.8
+ }
+]

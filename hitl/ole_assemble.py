@@ -89,20 +89,38 @@ def extract_embedded_pdf(xlsx_path, ole_basename, out_pdf):
     with zipfile.ZipFile(xlsx_path) as z:
         data = z.read(f"xl/embeddings/{ole_basename}")
     s = data.find(b"%PDF")
-    e = data.find(b"%%EOF", s)
-    if s < 0 or e < 0:
-        raise ValueError(f"{ole_basename} 内未找到 PDF")
+    e = data.rfind(b"%%EOF")   # 取最后一个 %%EOF(PDF 增量更新有多个), 避免截断损坏
+    if s < 0 or e < 0 or e < s:
+        raise ValueError(f"{ole_basename} 内未找到完整 PDF")
     os.makedirs(os.path.dirname(out_pdf), exist_ok=True)
     with open(out_pdf, "wb") as f:
         f.write(data[s:e + 5])
     return out_pdf
 
 
+def _fallback_icon(out_png):
+    """通用占位图标(源PDF空/损坏时用)，fitz 画一张, 不依赖 PIL。"""
+    doc = fitz.open()
+    page = doc.new_page(width=120, height=150)
+    page.draw_rect(page.rect, color=(0.5, 0.5, 0.5), fill=(0.95, 0.95, 0.95))
+    page.insert_text((28, 80), "PDF", fontsize=24, color=(0.6, 0, 0))
+    page.get_pixmap(dpi=96).save(out_png)
+    doc.close()
+
+
 def make_icon(pdf, out_png, dpi=110):
-    """渲染 PDF 首页为 PNG 预览（Excel 嵌入时自动转 EMF）。"""
-    d = fitz.open(pdf)
-    d[0].get_pixmap(dpi=dpi).save(out_png)
-    d.close()
+    """渲染 PDF 首页为 PNG 预览。失败(空/损坏)则用通用占位图标, 不崩。返回 out_png。"""
+    try:
+        d = fitz.open(pdf)
+        try:
+            if d.page_count > 0:
+                d[0].get_pixmap(dpi=dpi).save(out_png)
+                return out_png
+        finally:
+            d.close()
+    except Exception:
+        pass
+    _fallback_icon(out_png)
     return out_png
 
 
@@ -126,6 +144,31 @@ def embed_one(src_xlsx, out_xlsx, sheet_name, pdf, png, geo):
         obj = sh.OLEObjects().Add(ClassType="Package", Filename=os.path.abspath(pdf), Link=False,
                                   DisplayAsIcon=True, IconFileName=os.path.abspath(png), IconIndex=0)
         obj.Left, obj.Top, obj.Width, obj.Height = left, top, width, height
+        if os.path.exists(out_xlsx):
+            os.remove(out_xlsx)
+        wb.SaveAs(os.path.abspath(out_xlsx), FileFormat=51)
+        wb.Close(SaveChanges=False)
+    return out_xlsx
+
+
+def embed_many(src_xlsx, out_xlsx, specs):
+    """一个 COM 会话嵌入多个 OLE（段二总装）。specs=[{sheet,pdf,icon,L,T,W,H}, ...]。
+
+    WPS 忽略 Add 位置参数 → Add 后显式设几何。整本 cell 填完后由此一次性嵌全部 OLE(终态)。
+    """
+    with com_session() as xl:
+        wb = xl.Workbooks.Open(os.path.abspath(src_xlsx))
+        sheet_cache = {}
+        for spec in specs:
+            nm = spec["sheet"]
+            sh = sheet_cache.get(nm)
+            if sh is None:
+                sh = _find_sheet(wb, nm)
+                sheet_cache[nm] = sh
+            obj = sh.OLEObjects().Add(
+                ClassType="Package", Filename=os.path.abspath(spec["pdf"]), Link=False,
+                DisplayAsIcon=True, IconFileName=os.path.abspath(spec["icon"]), IconIndex=0)
+            obj.Left, obj.Top, obj.Width, obj.Height = spec["L"], spec["T"], spec["W"], spec["H"]
         if os.path.exists(out_xlsx):
             os.remove(out_xlsx)
         wb.SaveAs(os.path.abspath(out_xlsx), FileFormat=51)
