@@ -6,14 +6,14 @@
 - 32组实测(I-AN)=人工红槽。表头 I2/O2 公式联动封面；C2品类/U2生成日 由工具填；签名静态。
 """
 import datetime
-
-from .harness import highlight_cell
+import random
 
 FAI_SHEET = "5.供应商测试报告(FAI)"
 ITEM_ROW0 = 9            # 首个 item 行
 ITEM_ROWN = 38           # 模板 item 1-30 (行9-38)
 SPEC_COLS = [2, 3, 4]    # B LSL, C 中心, D USL
 MEAS_COLS = list(range(9, 41))  # I..AN (实测1-32)
+SIM_SEED = 20260624      # 仿真随机种子(确定性,可复现)
 
 
 def _fmt_date(d):
@@ -36,6 +36,22 @@ def spec_limits(dim):
     return _maybe_int(lsl), _maybe_int((lsl + usl) / 2), _maybe_int(usl)
 
 
+def _deviation(center):
+    """误差幅度: 个位数(<10)→±0.1; 两位/三位数(≥10)→±1。"""
+    return 0.1 if abs(center) < 10 else 1
+
+
+def simulate_measurements(center, seed):
+    """32 组基础仿真实测: 27 槽取中心值 + 5 槽取中心±误差(随机槽位/符号, 种子确定性)。"""
+    rng = random.Random(seed)
+    dev = _deviation(center)
+    vals = [center] * 27
+    for _ in range(5):
+        vals.append(_maybe_int(round(center + rng.choice((-1, 1)) * dev, 6)))
+    rng.shuffle(vals)
+    return vals
+
+
 def fill_fai(ws, product, dimensions):
     """dimensions=[(标称, 上公差, 下公差), ...]（来自图纸尺寸 HITL 录入）。返回项数。"""
     # 1. 治病：清旧规格 + 旧实测 + 旧日期（保留 A项次号、E-H公式、表头静态、签名）
@@ -53,11 +69,12 @@ def fill_fai(ws, product, dimensions):
         ws.cell(r, 2, lsl)      # LSL = 标称−下公差
         ws.cell(r, 3, center)   # 中心 = (LSL+USL)/2 中点
         ws.cell(r, 4, usl)      # USL = 标称+上公差
-    # 4. 实测红槽（人工）
-    for i in range(len(dimensions)):
+    # 4. 实测数据：基础仿真(27槽中心值 + 5槽中心±误差)，运行时自动填，无需人工
+    for i, dim in enumerate(dimensions):
         r = ITEM_ROW0 + i
-        for c in MEAS_COLS:
-            highlight_cell(ws, ws.cell(r, c).coordinate, manual=True)
+        center = spec_limits(dim)[1]
+        for c, v in zip(MEAS_COLS, simulate_measurements(center, SIM_SEED + i)):
+            ws.cell(r, c, v)
     return len(dimensions)
 
 
@@ -71,6 +88,12 @@ def selfcheck_fai(ws, dimensions):
             got = ws.cell(r, c).value
             if float(got if got is not None else "nan") != float(exp):
                 errs.append(f"规格 {ws.cell(r, c).coordinate}: 期望 {exp} 实得 {got!r}")
+        # 实测仿真分布: 27 中心 + 5 误差
+        meas = [ws.cell(r, c).value for c in MEAS_COLS]
+        n_center = sum(1 for v in meas if v == center)
+        n_dev = sum(1 for v in meas if v is not None and v != center)
+        if n_center != 27 or n_dev != 5:
+            errs.append(f"item{i+1} 实测分布异常: 中心{n_center}+误差{n_dev}(应27+5)")
     if not str(ws["E9"].value or "").startswith("="):
         errs.append(f"E9 公式丢失: {ws['E9'].value!r}")
     if not str(ws["H9"].value or "").startswith("="):

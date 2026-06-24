@@ -60,14 +60,9 @@ def main():
         errs.append(f"C2 品类={out_ws['C2'].value!r}")
     if out_ws["U2"].value != "2026.06.24":
         errs.append(f"U2 日期={out_ws['U2'].value!r}")
-    # 旧值已清（item 5-30 的规格空 = 模板里曾有？本单仅4项，B13应空）
+    # 旧值已清（本单仅4项，item5 的 B13 应空）
     if out_ws["B13"].value not in (None, ""):
         errs.append(f"item5 规格未清: B13={out_ws['B13'].value!r}")
-    # 实测红槽（I9 红）
-    f9 = out_ws["I9"].fill
-    red = f9.fgColor.rgb if f9 and f9.patternType == "solid" else None
-    if red != "00FF0000":
-        errs.append(f"I9 实测未标红槽: {red!r}")
 
     status = "PASS" if not errs else "FAIL"
     os.makedirs(OUTDIR, exist_ok=True)
@@ -78,15 +73,19 @@ def main():
     print("填入成品:", OUT)
     print("表头: C2(品类)=%s  U2(日期)=%s  I2(图号公式)=%s  O2(版本公式)=%s" % (
         out_ws["C2"].value, out_ws["U2"].value, out_ws["I2"].value, out_ws["O2"].value))
-    print("规格(图纸尺寸驱动):")
+    print("规格 + 实测仿真(27中心+5误差):")
+    from collections import Counter
     for r in range(9, 9 + len(DIMENSIONS)):
-        print(f"   item{r-8}: B={out_ws.cell(r,2).value} C={out_ws.cell(r,3).value} D={out_ws.cell(r,4).value}  (E公式={out_ws.cell(r,5).value})")
+        meas = [out_ws.cell(r, c).value for c in range(9, 41)]
+        cnt = Counter(meas)
+        print(f"   item{r-8}: 规格 {out_ws.cell(r,2).value}/{out_ws.cell(r,3).value}/{out_ws.cell(r,4).value}"
+              f"  实测分布={dict(cnt)}  (E公式={out_ws.cell(r,5).value})")
     if errs:
         print("❌ 自测失败：")
         for e in errs:
             print("   -", e)
         sys.exit(1)
-    print("✅ 自测通过：规格==图纸(对golden) + CP/CPK公式保留 + 表头 + 实测红槽 + 旧值已清 + 无外链")
+    print("✅ 自测通过：规格==图纸(对golden) + CP/CPK公式保留 + 表头 + 实测仿真27+5 + 旧值已清 + 无外链")
 
 
 if __name__ == "__main__":
