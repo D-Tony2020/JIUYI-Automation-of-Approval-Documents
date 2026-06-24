@@ -35,8 +35,9 @@ FONT = Font(name="宋体", size=9)
 
 ROHS_KEYS = ["Pb", "Cd", "Hg", "Cr6+", "PBBs", "PBDEs", "DEHP", "DBP", "BBP", "DIBP"]
 ROHS_COL = {k: 13 + i for i, k in enumerate(ROHS_KEYS)}   # M..V
-MAT_MERGE_COLS = [4, 5, 6, 11, 12] + list(range(13, 31))  # D,E,F,K,L,M..AD
-PART_MERGE_COLS = [1, 2, 3]                                # A,B,C
+PART_MERGE_COLS = [1, 2, 3]                # A,B,C 跨整个零件
+MAT_MERGE_COLS = [4, 5, 6]                 # D材质类别,E材质,F材质重量 跨整个材质
+BLOCK_MERGE_COLS = [11, 12] + list(range(13, 31))  # K,L,M..AD 跨同一报告块(支持多色)
 DATA_TOP = 14
 
 SUPPLIER_ALIAS = {
@@ -164,30 +165,47 @@ def _clear_region(ws, top, bottom):
 
 
 def inject_data(ws, bom, start_row=DATA_TOP):
-    """嵌套合并注入材质数据(复用 m7 结构)。返回数据末行。"""
+    """三层嵌套合并注入：零件(A/B/C) → 材质(D/E/F) → 报告块(K/L/M-V/W/X/AB/AC…)。
+
+    报告块支持多色：一材质可含多份报告，每份盖住自己的成份子组(如 PVC 黑+红)。返回数据末行。
+    """
     r = start_row
     for idx, part in enumerate(bom, 1):
         ps = r
         for mat in part["materials"]:
             ms = r
-            for comp in mat["成份"]:
-                ws.cell(r, 7, comp.get("成份名称", ""))
-                ws.cell(r, 8, comp.get("CAS", ""))
-                ws.cell(r, 10, comp.get("重量%", ""))
-                r += 1
+            for block in mat["blocks"]:
+                bs = r
+                for comp in block["成份"]:
+                    ws.cell(r, 7, comp.get("成份名称", ""))
+                    ws.cell(r, 8, comp.get("CAS", ""))
+                    ws.cell(r, 10, comp.get("重量%", ""))
+                    r += 1
+                be = r - 1
+                # 报告块级：RoHS十项 + 报告号/日期 + 合规占位
+                for k in ROHS_KEYS:
+                    ws.cell(bs, ROHS_COL[k], block.get("RoHS", {}).get(k, ""))
+                ws.cell(bs, 23, block.get("报告日期", ""))
+                ws.cell(bs, 24, block.get("报告编号", ""))
+                ws.cell(bs, 9, "/")       # I weight(g)
+                ws.cell(bs, 26, "/")      # Z Br
+                ws.cell(bs, 27, "/")      # AA Cl
+                ws.cell(bs, 28, "Yes")    # AB 是否符合
+                ws.cell(bs, 29, "否")      # AC 是否RoHS排外
+                ws.cell(bs, 30, "/")      # AD 排除项次
+                if be > bs:
+                    for c in BLOCK_MERGE_COLS:
+                        ws.merge_cells(start_row=bs, start_column=c, end_row=be, end_column=c)
             me = r - 1
+            # 材质级：材质类别/材质/材质重量
             ws.cell(ms, 4, mat.get("材质类别", ""))
             ws.cell(ms, 5, mat.get("材质", ""))
-            for k in ROHS_KEYS:
-                ws.cell(ms, ROHS_COL[k], mat.get("RoHS", {}).get(k, ""))
-            ws.cell(ms, 23, mat.get("检测报告日期", ""))
-            ws.cell(ms, 24, mat.get("检测报告编号", ""))
-            ws.cell(ms, 28, "Yes")
-            ws.cell(ms, 29, "否")
+            ws.cell(ms, 6, "/")       # F 材质重量 占位
             if me > ms:
                 for c in MAT_MERGE_COLS:
                     ws.merge_cells(start_row=ms, start_column=c, end_row=me, end_column=c)
         pe = r - 1
+        # 零件级：项次/零件/供应商
         ws.cell(ps, 1, idx)
         ws.cell(ps, 2, part.get("零件", ""))
         ws.cell(ps, 3, part.get("供应商", ""))

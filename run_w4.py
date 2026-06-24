@@ -31,8 +31,9 @@ _msds = json.load(open(os.path.join(MOCK, "msds_extract.json"), encoding="utf-8"
 _rohs = json.load(open(os.path.join(MOCK, "rohs_extract.json"), encoding="utf-8"))
 _row = material_table.assemble_row(_msds, _rohs, "锡", "锡丝", "锡")
 BOM = [{"零件": _row["零件"], "供应商": _row["供应商"], "materials": [
-    {"材质类别": _row["材质类别"], "材质": _row["材质"], "成份": _row["成份"], "RoHS": _row["RoHS"],
-     "检测报告编号": _row["检测报告编号"], "检测报告日期": _row["检测报告日期"]}]}]
+    {"材质类别": _row["材质类别"], "材质": _row["材质"], "blocks": [
+        {"报告编号": _row["检测报告编号"], "报告日期": _row["检测报告日期"],
+         "RoHS": _row["RoHS"], "成份": _row["成份"]}]}]}]
 
 DATA = {
     "drawing_meta": {"名称": "SB120420BLCNR009导线", "品号": "YY60039403", "版本": "A01"},
