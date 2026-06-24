@@ -1,0 +1,21 @@
+物質安全資料表 Material Safety Data Sheet
+
+供應商名稱：SUPPLIER_DEID
+地址：[已脫敏]    電話：[已脫敏]    郵箱：[已脫敏]
+
+產品名稱：Sn-0.7Cu 無鉛錫線
+產品用途：錫線內包含不同含量助焊劑，用於手工烙鐵焊。
+
+2. 產品成分 COMPOSITION / INFORMATION ON INGREDIENTS
+成分 | CAS # | 百分含量 (wt%) | OSHA PEL mg/m3 | TLV-TWA mg/m3 | TLV-STEL mg/m3
+錫（Sn） | 7440-31- 5 | 99.3 | 2.0 | 2 | 不詳
+銅（Cu） | 7440-50- 8 | 0.7 | 0.1 | 0.2 | 不詳
+改性松香 | 65997-05 -9 | < 3 | 不詳 | 不詳 | 不詳
+
+CAS: 化學文摘索引；OSHA: 美國職業安全和健康署；PEL: 允許暴露限度；TLV: 閥極限值。
+
+3. 危險警告 HAZARDS IDENTIFICATION
+外觀：固體（藥芯焊錫絲）。高溫焊料可能灼傷眼睛和皮膚。
+
+16. 其它資料 OTHER INFORMATION
+如需更多資料，請與 SUPPLIER_DEID 聯絡。

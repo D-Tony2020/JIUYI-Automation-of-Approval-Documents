@@ -1,0 +1,21 @@
+Test Report      No.: RPT-DEID-0001              Date: Jun 30, 2025           Page 1 of 7
+
+Client Name: CLIENT_DEID
+Sample Description: Lead-free tin wire
+Test Conclusion: Pass
+
+Restriction of Hazardous Substances Directive (EU) 2015/863
+
+Test Item                          Limit     Unit     MDL       Result
+Lead (Pb)                          1000      mg/kg    2         63
+Mercury (Hg)                       1000      mg/kg    2         N.D.
+Cadmium (Cd)                       100       mg/kg    2         N.D.
+Hexavalent Chromium Cr(VI)         1000      mg/kg    8         N.D.
+Polybrominated biphenyls (PBBs)    1000      mg/kg    5         N.D.
+Polybrominated diphenyl ethers (PBDEs) 1000  mg/kg    5         N.D.
+Bis(2-ethylhexyl) phthalate (DEHP) 1000      mg/kg    50        N.D.
+Dibutyl phthalate (DBP)            1000      mg/kg    50        N.D.
+Benzyl butyl phthalate (BBP)       1000      mg/kg    50        N.D.
+Diisobutyl phthalate (DIBP)        1000      mg/kg    50        N.D.
+
+Remarks: (1) 1 mg/kg = 1 ppm = 0.0001%   (2) N.D. = Not Detected (< MDL)   (3) "-" = Not Regulated

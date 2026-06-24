@@ -1,0 +1,11 @@
+{
+  "_说明": "mock provider 用：模拟一次【未做后处理】的 MSDS 抽取原始输出，故意保留 wt%/繁体/<3 等原貌，以检验 assemble 的换算与归一化。",
+  "material_name": "Sn-0.7Cu無鉛錫線",
+  "supplier_name_raw": "興鴻泰錫業有限公司",
+  "components": [
+    {"name": "錫(Sn)", "cas": "7440-31- 5", "weight_pct_raw": "99.3wt%"},
+    {"name": "銅(Cu)", "cas": "7440-50- 8", "weight_pct_raw": "0.7wt%"},
+    {"name": "改性松香", "cas": "65997-05 -9", "weight_pct_raw": "<3"}
+  ],
+  "source_file": "07CU物質安全資料表无铅锡线 Material Safe Data Sheet(1).pdf"
+}

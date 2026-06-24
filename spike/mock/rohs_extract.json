@@ -1,0 +1,21 @@
+{
+  "_说明": "mock provider 用：模拟一次【未做后处理】的 RoHS 报告抽取原始输出，故意保留英文日期/具体数值/N.D. 大小写，以检验 assemble 的归一化与'非ND照填'。",
+  "report_number": "SZXEC25002243403",
+  "report_date_raw": "Jun 30, 2025",
+  "lab": "SGS-CSTC",
+  "sample_name": "Environmental protection tin wire",
+  "conclusion": "Pass",
+  "rohs": {
+    "Pb":   {"result": "63",   "unit": "mg/kg"},
+    "Cd":   {"result": "N.D.", "unit": "mg/kg"},
+    "Hg":   {"result": "N.D.", "unit": "mg/kg"},
+    "Cr6+": {"result": "N.D.", "unit": "mg/kg"},
+    "PBBs": {"result": "N.D.", "unit": "mg/kg"},
+    "PBDEs":{"result": "N.D.", "unit": "mg/kg"},
+    "DEHP": {"result": "N.D.", "unit": "mg/kg"},
+    "DBP":  {"result": "N.D.", "unit": "mg/kg"},
+    "BBP":  {"result": "N.D.", "unit": "mg/kg"},
+    "DIBP": {"result": "N.D.", "unit": "mg/kg"}
+  },
+  "source_file": "锡线ROHS英文版 SZXEC25002243403 2025.06.30.pdf"
+}

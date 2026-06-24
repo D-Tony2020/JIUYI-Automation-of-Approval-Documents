@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Excel 临时锁文件
+~$*.xlsx
+~$*.xls
+
+# 中间产物留档（保留在磁盘供随时调取，不入 git 以免膨胀）
+产出留档/
+.work/
+
+# OS
+.DS_Store
+Thumbs.db
