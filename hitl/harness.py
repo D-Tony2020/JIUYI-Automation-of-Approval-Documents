@@ -10,6 +10,11 @@ import os
 import hashlib
 import zipfile
 import openpyxl
+from openpyxl.styles import PatternFill
+
+# 动态格高亮：黄=自动填充格；红=人工槽位（FAI 实测/照片，后续表用）
+HIGHLIGHT_AUTO = PatternFill("solid", fgColor="FFFF00")
+HIGHLIGHT_MANUAL = PatternFill("solid", fgColor="FF0000")
 
 
 def load_template(template_path):
@@ -35,6 +40,23 @@ def write_cell(ws, coord, value):
 def read_cell(ws, coord):
     """读取单元格；合并区从左上锚点格读。"""
     return ws[_merged_anchor(ws, coord)].value
+
+
+def highlight_cell(ws, coord, manual=False):
+    """给动态格打高亮（合并区落锚点格）。manual=True 用红(人工槽位)，否则黄(自动填充)。"""
+    ws[_merged_anchor(ws, coord)].fill = HIGHLIGHT_MANUAL if manual else HIGHLIGHT_AUTO
+
+
+def assert_highlighted(ws, coords, manual=False):
+    """断言这些动态格已高亮（防回归）。返回错误列表。"""
+    want = "00FF0000" if manual else "00FFFF00"
+    errs = []
+    for co in coords:
+        cell = ws[_merged_anchor(ws, co)]
+        rgb = cell.fill.fgColor.rgb if cell.fill and cell.fill.patternType == "solid" else None
+        if rgb != want:
+            errs.append(f"{co} 未高亮（实得 {rgb!r}）")
+    return errs
 
 
 def save_output(wb, out_path, dedupe=True):
