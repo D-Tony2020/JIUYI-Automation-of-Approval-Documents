@@ -51,7 +51,7 @@ def _call_llm(provider: str, prompt: str, model: str = None) -> dict:
     try:
         json.dump(body, bf, ensure_ascii=False)
         bf.close()
-        cmd = ["curl.exe", "-sS", "-m", "120", *proxy_args, url,
+        cmd = ["curl.exe", "-sS", "-m", "120", "--ssl-no-revoke", *proxy_args, url,
                "-H", f"Authorization: Bearer {key}",
                "-H", "Content-Type: application/json",
                "-d", f"@{bf.name}"]
