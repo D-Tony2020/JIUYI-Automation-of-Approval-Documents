@@ -8,7 +8,7 @@
 data 单一来源：{"drawing_meta": {名称, 品号, 版本}}。料号 = drawing_meta["品号"]。
 """
 from .harness import load_template, save_output, highlight_cell
-from . import cover, sample_list
+from . import cover, sample_list, material_table
 
 
 def _apply_cover(wb, d):
@@ -19,10 +19,16 @@ def _apply_sample(wb, d):
     sample_list.fill_sample_list(wb[sample_list.SAMPLE_SHEET], d["drawing_meta"]["品号"])
 
 
-# (阶段名, 应用函数, sheet 名, 目标格集) —— 列表顺序 = 施工序
+def _apply_material(wb, d):
+    material_table.fill_material_table(wb[material_table.MAT_SHEET], d["bom"], d["product"])
+
+
+# (阶段名, 应用函数, sheet 名, 目标格集) —— 列表顺序 = 施工序。
+# coords=None 表示变行表(材质表)：不做固定 coord 高亮/diff，靠值比对自检。
 PIPELINE = [
     ("W1-封面", _apply_cover, cover.COVER_SHEET, {"D12", "D14", "D16"}),
     ("W2-送样目录", _apply_sample, sample_list.SAMPLE_SHEET, sample_list.TARGET_COORDS),
+    ("W4-材质表", _apply_material, material_table.MAT_SHEET, None),
 ]
 
 
@@ -37,6 +43,8 @@ def build_upto(template, out_path, data, upto, highlight=True):
         fn(wb, data)
     if highlight:
         for _name, _fn, sheet, coords in PIPELINE:
+            if not coords:   # 变行表(材质表)无固定目标格, 跳过高亮
+                continue
             ws = wb[sheet]
             for coord in coords:
                 highlight_cell(ws, coord)

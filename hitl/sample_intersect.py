@@ -13,8 +13,14 @@
 """
 import glob
 import os
+import re
 import openpyxl
 from openpyxl.utils import get_column_letter
+
+
+def _norm(v):
+    """折叠空白用于"是否变动"比较，去掉纯格式（空格/缩进）噪声。"""
+    return re.sub(r"\s+", "", str(v)) if v not in (None, "") else ""
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SAMPLES_DIR = os.path.join(_ROOT, "案例材料", "承认书", "参考用承诺书集")
@@ -58,11 +64,14 @@ def classify(sheet, blank_template=BLANK_TEMPLATE, max_row=80, max_col=40):
         if all(v in (None, "") for v in vals):
             continue
         coord = f"{get_column_letter(c)}{r}"
-        varies = len({str(v) for v in vals}) > 1
+        varies = len({_norm(v) for v in vals}) > 1   # 折叠空白后比较，去格式噪声
         tmpl = blank.get((r, c))
         tmpl_filled = tmpl not in (None, "")
-        if varies and tmpl_filled:
-            verdict = "模板初始化错"
+        tmpl_formula = isinstance(tmpl, str) and tmpl.startswith("=")
+        if tmpl_formula:
+            verdict = "公式·自动"          # 模板公式自动派生(如 =封面!D14)，非错
+        elif varies and tmpl_filled:
+            verdict = "模板初始化错"        # 模板写死了会变的值 → 须修模板
         elif varies:
             verdict = "动态"
         elif tmpl_filled:
@@ -87,7 +96,7 @@ if __name__ == "__main__":
     for sh in sheets:
         res, n = classify(sh)
         print(f"\n===== 「{sh}」 样本{n} =====")
-        for verdict in ("模板初始化错", "动态", "动态·定值"):
+        for verdict in ("模板初始化错", "公式·自动", "动态", "动态·定值"):
             hits = {c: d for c, d in res.items() if d["verdict"] == verdict}
             if hits:
                 print(f"  [{verdict}] {len(hits)}:")
