@@ -22,8 +22,22 @@ def _fmt_date(d):
     return str(d)
 
 
+def _maybe_int(x):
+    """整数值去掉浮点尾巴(98.0→98), 与 golden 显示一致。"""
+    return int(x) if isinstance(x, float) and x.is_integer() else x
+
+
+def spec_limits(dim):
+    """图纸尺寸 → (LSL, 中心, USL)。dim=(标称, 上公差, 下公差)，支持单边/非对称。
+    实证(7样本20/20): 中心恒=(LSL+USL)/2 中点, 非标称。对称是 上公差==下公差 的特例。
+    """
+    n, up, lo = dim
+    lsl, usl = n - lo, n + up
+    return _maybe_int(lsl), _maybe_int((lsl + usl) / 2), _maybe_int(usl)
+
+
 def fill_fai(ws, product, dimensions):
-    """dimensions=[(标称, 公差), ...]（来自图纸尺寸 HITL 录入）。返回项数。"""
+    """dimensions=[(标称, 上公差, 下公差), ...]（来自图纸尺寸 HITL 录入）。返回项数。"""
     # 1. 治病：清旧规格 + 旧实测 + 旧日期（保留 A项次号、E-H公式、表头静态、签名）
     for r in range(ITEM_ROW0, ITEM_ROWN + 1):
         for c in SPEC_COLS + MEAS_COLS:
@@ -32,12 +46,13 @@ def fill_fai(ws, product, dimensions):
     # 2. 表头
     ws["C2"] = product["材料名称"]   # 品类
     ws["U2"] = _fmt_date(product.get("填表日期") or datetime.date.today())  # 生成日
-    # 3. 规格上下限（图纸尺寸驱动）
-    for i, (n, t) in enumerate(dimensions):
+    # 3. 规格上下限（图纸尺寸驱动，支持单边/非对称）
+    for i, dim in enumerate(dimensions):
+        lsl, center, usl = spec_limits(dim)
         r = ITEM_ROW0 + i
-        ws.cell(r, 2, n - t)   # LSL
-        ws.cell(r, 3, n)       # 中心
-        ws.cell(r, 4, n + t)   # USL
+        ws.cell(r, 2, lsl)      # LSL = 标称−下公差
+        ws.cell(r, 3, center)   # 中心 = (LSL+USL)/2 中点
+        ws.cell(r, 4, usl)      # USL = 标称+上公差
     # 4. 实测红槽（人工）
     for i in range(len(dimensions)):
         r = ITEM_ROW0 + i
@@ -49,11 +64,12 @@ def fill_fai(ws, product, dimensions):
 def selfcheck_fai(ws, dimensions):
     """规格==图纸换算 + E-H公式保留。返回错误列表。"""
     errs = []
-    for i, (n, t) in enumerate(dimensions):
+    for i, dim in enumerate(dimensions):
         r = ITEM_ROW0 + i
-        for c, exp in ((2, n - t), (3, n), (4, n + t)):
+        lsl, center, usl = spec_limits(dim)
+        for c, exp in ((2, lsl), (3, center), (4, usl)):
             got = ws.cell(r, c).value
-            if got != exp:
+            if float(got if got is not None else "nan") != float(exp):
                 errs.append(f"规格 {ws.cell(r, c).coordinate}: 期望 {exp} 实得 {got!r}")
     if not str(ws["E9"].value or "").startswith("="):
         errs.append(f"E9 公式丢失: {ws['E9'].value!r}")

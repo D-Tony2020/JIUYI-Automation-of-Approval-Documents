@@ -28,8 +28,8 @@ BLANK = os.path.join(OUTDIR, "FAI_空白参照__00.xlsx")
 OUT = os.path.join(OUTDIR, "FAI_规格+红槽__01.xlsx")
 SHEET = fai.FAI_SHEET
 
-# 本单 YY60039403 图纸 4 尺寸（HITL 录入）
-DIMENSIONS = [(98, 5), (60, 5), (28, 3), (2, 0.5)]
+# 本单 YY60039403 图纸 4 尺寸（HITL 录入）= (标称, 上公差, 下公差)；本单全对称
+DIMENSIONS = [(98, 5, 5), (60, 5, 5), (28, 3, 3), (2, 0.5, 0.5)]
 DATA = {
     "drawing_meta": {"名称": "SB120420BLCNR009导线", "品号": "YY60039403", "版本": "A01"},
     "product": {"材料名称": "导线", "填表日期": datetime.date(2026, 6, 24)},
