@@ -179,13 +179,16 @@ def run_case(code, golden):
 
 
 def main():
+    import re
     os.makedirs(OUTROOT, exist_ok=True)
+    only = sys.argv[1] if len(sys.argv) > 1 else None     # 可选:只跑某案(传案号片段)
     cases = sorted([p for p in glob.glob(os.path.join(CASES_DIR, "*.xlsx"))
                     if not os.path.basename(p).startswith("~$")])
-    print("=== M2.1 无拐杖走骨架 | 全有效案 ===\n")
+    print(f"=== M2.1 无拐杖走骨架 | {'单案 '+only if only else '全有效案'} ===\n")
     for g in cases:
-        import re
         code = re.sub(r"[^A-Za-z0-9]", "", os.path.basename(g))[:10]
+        if only and only not in code:
+            continue
         if code in SKIP:
             print(f"⏭️  {code}: 跳过(损坏golden)"); continue
         try:
