@@ -59,11 +59,11 @@ def main():
         errs = sample_photo.selfcheck_sample_photo(rews, n)
         assert_no_external_links(out)
         reopen_photos = sum(1 for im in rews._images if sample_photo._anchor_col(im) != 0)
-        lay = sample_photo.photo_layout(n)
-        shape = f"{n//2}行×2" + ("+1居中" if n % 2 else "")
+        asp = [round(sample_photo._aspect(p), 2) for p in src]
+        nv, nh = sum(1 for a in asp if a < 1), sum(1 for a in asp if a >= 1)
         st = "PASS" if not errs else "FAIL: " + "; ".join(errs)
-        print(f"  N={n}: 放入{placed}张 复开见{reopen_photos}张 布局[{shape}] "
-              f"位置={[(round(x,1),r) for _, x, r, _ in lay]}  {st}")
+        print(f"  N={n}: 放入{placed} 复开{reopen_photos} 宽高比{asp} "
+              f"(竖{nv}侧排+横{nh}满宽) 保真不变形  {st}")
         all_ok = all_ok and not errs
 
     with open(os.path.join(OUTDIR, "_manifest.txt"), "a", encoding="utf-8") as f:

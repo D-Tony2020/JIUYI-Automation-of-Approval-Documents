@@ -1,27 +1,27 @@
 # -*- coding: utf-8 -*-
-"""W7 样品照片（第4标签页『4.样品照片（多角度）』）：照片数驱动的 Excel 布局。
+"""W7 样品照片：保留原图宽高比的动态布局（只缩放不变形）。
 
-照片来源=前端 UI 用户手动上传（微信收图→剪贴板→粘贴，UI 保留该习惯），**不在 Excel 里标红**。
-本模块只负责：给定 N 张已上传照片(2-4) → 按对应布局摆进 Excel。段一 openpyxl。
-布局实证 golden：2 张并排一行；3 张=2+1(末张居中)；4 张=2+2。col B 宽列内用 colOff 定位。
-
-⏸ 挂起优化（潜在升级点，全套手测若有排版问题再执行）：
-   当前用统一 4×5cm 槽，**未考虑照片尺寸/宽高比不一**。客户反映实际常是「2小1长」「3小一长」
-   ——有"长"照(细长条，如整线展开照)+"小"照(方形细节照)。优化方向：按每张实际宽高比 + 长/小
-   分类自适应（长照占满宽一行、小照并排），而非等尺寸槽。状态：挂起。
+照片来源=前端 UI 用户手动上传（微信收图→剪贴板→粘贴）。本模块给定 N 张已上传照 → 摆进 Excel。
+实证 7 案规律：「小」照=竖图(宽高比0.6-0.8,细节)，「长」照=横图(宽高比1.1-4.0,整体)。
+布局：竖照同高侧排在上排；横照满宽(限框内)堆叠在下方。**每张按原始宽高比定尺寸，绝不压扁。**
 """
+import io as _io
+
 from openpyxl.drawing.image import Image
 from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
 from openpyxl.drawing.xdr import XDRPositiveSize2D
+from PIL import Image as PILImage
 
 SHEET = "4.样品照片（多角度）"
-EMU_CM = 360000                      # 1cm = 360000 EMU
-COL_B = 1                            # 宽内容列
-X_PAIR = [4.3, 8.5]                  # 一行两张的 colOff(cm)
-X_CENTER = 6.4                       # 单张居中 colOff(cm)
-Y_ROWS = [11, 17, 23]               # 每行起始 row(0-indexed anchor)
-Y_OFF = 0.5                          # rowOff(cm)
-PHOTO_W, PHOTO_H = 4.0, 5.0          # 单张尺寸(cm)
+EMU_CM = 360000
+COL_B = 1                 # 宽内容列
+BASE_ROW = 11             # 照片区基准行(0-indexed)
+X0 = 3.0                  # 首张 colOff(cm)
+GAP = 0.4                 # 间距(cm)
+ASPECT_SPLIT = 1.0        # <1 竖(小) / ≥1 横(长)
+H_PORTRAIT = 5.0          # 竖照统一高(cm)，宽=高×宽高比
+LAND_WMAX, LAND_HMAX = 13.0, 7.0   # 横照限框(cm)，按比例缩放进框
+TOP_OFF = 0.3             # 上排 rowOff(cm)
 
 
 def _cm(x):
@@ -32,29 +32,52 @@ def _anchor_col(im):
     return getattr(getattr(getattr(im, "anchor", None), "_from", None), "col", 0)
 
 
-def photo_layout(n):
-    """N 张照片(2-4)的位置 [(col, colOff_cm, row, rowOff_cm)]。2/行, 奇数末张居中。"""
-    pos = []
-    full, rem = divmod(n, 2)
-    for r in range(full):
-        for x in X_PAIR:
-            pos.append((COL_B, x, Y_ROWS[r], Y_OFF))
-    if rem:
-        pos.append((COL_B, X_CENTER, Y_ROWS[full], Y_OFF))
-    return pos
+def _aspect(path):
+    try:
+        w, h = PILImage.open(path).size
+        return w / h if h else 0.7
+    except Exception:
+        return 0.7
+
+
+def _place(ws, path, x_cm, y_cm, w_cm, h_cm):
+    img = Image(path)
+    marker = AnchorMarker(col=COL_B, colOff=_cm(x_cm), row=BASE_ROW, rowOff=_cm(y_cm))
+    img.anchor = OneCellAnchor(_from=marker, ext=XDRPositiveSize2D(_cm(w_cm), _cm(h_cm)))
+    ws.add_image(img)
+    return (w_cm, h_cm)
+
+
+def plan_layout(aspects):
+    """给定各照宽高比 → [(x_cm, y_cm, w_cm, h_cm)]，保留比例。竖照侧排、横照满宽下置。"""
+    out = [None] * len(aspects)
+    idx_p = [i for i, a in enumerate(aspects) if a < ASPECT_SPLIT]   # 竖/小
+    idx_l = [i for i, a in enumerate(aspects) if a >= ASPECT_SPLIT]  # 横/长
+    # 竖照：同高 H_PORTRAIT，宽=高×比，侧排
+    x = X0
+    for i in idx_p:
+        w = H_PORTRAIT * aspects[i]
+        out[i] = (x, TOP_OFF, w, H_PORTRAIT)
+        x += w + GAP
+    # 横照：限框 LAND_WMAX×LAND_HMAX 内按比例缩放，满宽堆叠在竖排下方
+    y = TOP_OFF + (H_PORTRAIT + GAP if idx_p else 0)
+    for i in idx_l:
+        a = aspects[i]
+        w, h = LAND_WMAX, LAND_WMAX / a
+        if h > LAND_HMAX:
+            h, w = LAND_HMAX, LAND_HMAX * a
+        out[i] = (X0, y, w, h)
+        y += h + GAP
+    return out
 
 
 def fill_sample_photo(ws, photo_paths):
-    """清 golden 残留成品照(留 LOGO) + 按张数布局摆入 N 张上传照。返回放入张数。"""
-    ws._images = [im for im in ws._images if _anchor_col(im) == 0]   # 留 col0 LOGO
-    layout = photo_layout(len(photo_paths))
-    for path, (col, xoff, row, yoff) in zip(photo_paths, layout):
-        img = Image(path)
-        img.width, img.height = None, None    # 由 ext 定尺寸
-        marker = AnchorMarker(col=col, colOff=_cm(xoff), row=row, rowOff=_cm(yoff))
-        img.anchor = OneCellAnchor(_from=marker, ext=XDRPositiveSize2D(_cm(PHOTO_W), _cm(PHOTO_H)))
-        ws.add_image(img)
-    return len(layout)
+    """清 golden 残照(留LOGO) + 按原图比例动态摆 N 张上传照(只缩放不变形)。返回张数。"""
+    ws._images = [im for im in ws._images if _anchor_col(im) == 0]
+    aspects = [_aspect(p) for p in photo_paths]
+    for path, (x, y, w, h) in zip(photo_paths, plan_layout(aspects)):
+        _place(ws, path, x, y, w, h)
+    return len(photo_paths)
 
 
 def selfcheck_sample_photo(ws, n_expected):
@@ -65,7 +88,24 @@ def selfcheck_sample_photo(ws, n_expected):
         errs.append("LOGO 被误删")
     if len(photos) != n_expected:
         errs.append(f"成品照数 {len(photos)}，应 {n_expected}")
-    # 不重叠（同行两张 X 间距 ≥ 照片宽）
-    if X_PAIR[1] - X_PAIR[0] < PHOTO_W:
-        errs.append("同行两张会重叠")
+    # 比例保真：每张 ext 宽高比 ≈ 原图宽高比
+    for im in photos:
+        ext = im.anchor.ext
+        placed = (ext.width / ext.height) if ext.height else 0
+        native = _aspect_from_image(im)
+        if native and abs(placed - native) / native > 0.05:
+            errs.append(f"照片变形：摆放比{round(placed,2)} vs 原图比{round(native,2)}")
+            break
     return errs
+
+
+def _aspect_from_image(im):
+    try:
+        return _aspect_bytes(im._data())
+    except Exception:
+        return None
+
+
+def _aspect_bytes(data):
+    w, h = PILImage.open(_io.BytesIO(data)).size
+    return w / h if h else None
