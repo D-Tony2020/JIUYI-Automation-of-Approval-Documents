@@ -18,6 +18,8 @@ from hitl.build import build_upto
 from hitl import material_table, fai
 from study.golden_parse import parse_golden
 from study.case_data import to_inject_bom, extract_drawing_meta, extract_dimensions
+from study.embed_structure import count_from_bom
+from study.ole_structure import ole_count_per_sheet
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 TPL = os.path.join(ROOT, "模板", "承认书空白模板_治病.xlsx")
@@ -82,9 +84,16 @@ def run_case(golden):
         for c in (2, 3, 4):
             if _n(gfai.cell(r, c).value) != _n(ofai.cell(r, c).value):
                 fai_diff.append((r, c))
+    # 结构计数: BOM算出 vs golden实际OLE数(验"结构可变"预测)
+    pred = count_from_bom(bom)
+    act = ole_count_per_sheet(golden)
+    cnt = {}
+    for sh in ("材质证明书", "部件承认书", "UL证明"):
+        cnt[sh] = (pred.get(sh, 0), act.get(sh, 0))
     return {
         "code": code, "材质数": len(mats), "尺寸数": len(dims), "数据末行": last,
         "mat_diff": mat_diff, "cat_diff": cat_diff, "cov_diff": cov_diff, "fai_diff": fai_diff,
+        "cnt": cnt,
     }
 
 
@@ -111,6 +120,8 @@ def main():
             note = f"  (材质类别合并golden人工不一致×{len(r['cat_diff'])})"
         print(f"{flag} {r['code']}: 材质{r['材质数']} 尺寸{r['尺寸数']} | "
               f"数据diff {len(r['mat_diff'])}/{ncells}  封面 {len(r['cov_diff'])}  FAI {len(r['fai_diff'])}{note}")
+        cm = "  ".join(f"{k}{v[0]}{'=' if v[0]==v[1] else '≠'}{v[1]}" for k, v in r["cnt"].items())
+        print(f"      结构计数(算/golden): {cm}")
         for d in r["mat_diff"][:3]:
             print(f"      r{d[0]}c{d[1]}: golden={d[2]!r} 回放={d[3]!r}")
     good = [r for r in rows if r]
