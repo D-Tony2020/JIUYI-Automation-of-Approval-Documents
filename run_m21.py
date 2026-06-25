@@ -15,12 +15,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import openpyxl
 from hitl.drawing_extract import extract as draw_extract
 from hitl.file_router import route
-from hitl.file_match import content_match
+from hitl.file_match import content_match, match_material
 from hitl.build import build_upto
 from hitl.ole_assemble import make_icon, embed_many, count_ole, verify_open
 from hitl.material_table import compute_layout, DATA_TOP, OLE_COL
 from hitl import sample_photo
-from study.embed_structure import grid_anchors, GRID, matcert_anchors, MATCERT_W, MATCERT_H
+from study.embed_structure import (grid_anchors, GRID, MATCERT_W, MATCERT_H,
+                                    MATCERT_PART_TOPS, MATCERT_X0, MATCERT_DX)
 from study.golden_parse import parse_golden
 from study.case_data import to_inject_bom, _distinct_bins_per_sheet, extract_ole_labels
 
@@ -28,7 +29,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 PSEUDO_ROOT = os.path.join(ROOT, "本单输入", "pseudo")
 BLANK = os.path.join(ROOT, "模板", "承认书空白模板_通用.xlsx")
 CASES_DIR = os.path.join(ROOT, "案例材料", "承认书", "参考用承诺书集")
-OUTROOT = os.path.join(ROOT, "产出留档", "M2.1-走骨架")
+OUTROOT = os.environ.get("M21_OUT") or os.path.join(ROOT, "产出留档", "M2.1-走骨架")
 TODAY = datetime.date(2026, 6, 25)
 SKIP = {"YY60039397"}            # 损坏 golden(嵌错图)
 
@@ -43,6 +44,21 @@ def full_sheet(names, short):
         if kw in n or (short == "出货" and ("出貨" in n or "检验" in n)):
             return n
     return None
+
+
+def part_top(name):
+    """零件 → 材质证明书该零件行的 Top。按**零件类型**(非序号)对齐标签行,
+    使产品用零件子集时(如只有线材+锡)锡仍落到锡的类型行,与标签对齐。"""
+    i = (3 if "锡" in name else
+         2 if any(k in name for k in ("套", "热缩", "管")) else
+         1 if any(k in name for k in ("胶", "端子")) else 0)
+    return MATCERT_PART_TOPS[i] if i < len(MATCERT_PART_TOPS) else MATCERT_PART_TOPS[-1]
+
+
+def identify(pdf, base, flat):
+    """料 identity:内容驱动优先(可靠), 认不出(繁体/英文content)回退文件名匹配。"""
+    mi = content_match(pdf, flat)
+    return mi if mi is not None else match_material(base, flat)
 
 
 def ev_col(name):
@@ -114,18 +130,18 @@ def run_case(code, golden):
             if not fs:
                 continue
             if short == "材质表":
-                mi, col = content_match(f, flat), ev_col(base)   # 内容驱动 真
+                mi, col = identify(f, base, flat), ev_col(base)  # 内容驱动+文件名回退 真
                 if mi is not None and (mi, col) in seen_mt:      # 同(料,证据列)只留一份
                     continue
                 seen_mt.add((mi, col))
                 sp = {"sheet": fs, "pdf": f, "short": short, "mat_idx": mi, "col": col, "W": 56, "H": 42}
                 mt_specs.append(sp); specs.append(sp)
             elif short == "材质证明":
-                mi = content_match(f, flat)
-                if mi is not None and mi in seen_cert:           # 一材一证
+                mi = identify(f, base, flat)
+                if mi is None or mi in seen_cert:                # 一材一证; 认不出料的不硬塞→确认环②
                     continue
                 seen_cert.add(mi)
-                specs.append({"sheet": fs, "pdf": f, "short": short, "W": 56, "H": 42})
+                specs.append({"sheet": fs, "pdf": f, "short": short, "mat_idx": mi, "W": 56, "H": 42})
             else:
                 specs.append({"sheet": fs, "pdf": f, "short": short, "W": 56, "H": 42})
     specs.append({"sheet": full_sheet(names, "图纸"), "pdf": draw_pdf, "short": "图纸", "W": 320, "H": 220})
@@ -138,8 +154,15 @@ def run_case(code, golden):
     for s in specs:
         if s["short"] != "材质表":
             by_short[s["short"]].append(s)
-    for s, (L, T) in zip(by_short["材质证明"], matcert_anchors(bom)):
-        s["L"], s["T"], s["W"], s["H"] = L, T, MATCERT_W, MATCERT_H
+    # 材质证明书:内容驱动落位 — 每份证书落到它那个零件行(按 content_match 的料→零件), 行内横排
+    part_of_flat = [pi for pi, p in enumerate(bom) for _ in p["materials"]]
+    cert_cnt = defaultdict(int)
+    for s in by_short["材质证明"]:
+        mi = s.get("mat_idx")
+        pi = part_of_flat[mi] if (mi is not None and mi < len(part_of_flat)) else 0
+        top = part_top(bom[pi]["零件"] if pi < len(bom) else "")   # 按零件类型对齐标签行
+        s["L"], s["T"], s["W"], s["H"] = MATCERT_X0 + cert_cnt[top] * MATCERT_DX, top, MATCERT_W, MATCERT_H
+        cert_cnt[top] += 1
     for short, gk in (("部件承认", "部件承认书"), ("UL", "UL证明"), ("信赖性", "信赖性")):
         g = GRID[gk]
         for s, (L, T) in zip(by_short[short], grid_anchors(len(by_short[short]), **g)):
