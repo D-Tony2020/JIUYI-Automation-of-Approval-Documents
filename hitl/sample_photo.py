@@ -1,56 +1,66 @@
 # -*- coding: utf-8 -*-
-"""W7 样品照片（第4标签页『4.样品照片（多角度）』）：治病 + 人工红槽。
+"""W7 样品照片（第4标签页『4.样品照片（多角度）』）：照片数驱动的 Excel 布局。
 
-照片=浮动嵌入图（非OLE非cell），段一 openpyxl 处理。
-- 治病：删 golden 残留的成品照（按锚点 col>0 判，保留 col0 的生久 LOGO）。
-- 红槽：照片区浅红填充 + 红字标签『待人工插入成品照片』。纯人工，未插禁导出。
-实证 7 案：恒 4 图（1 LOGO + 3 成品照），照片数固定、不随产品变。
+照片来源=前端 UI 用户手动上传（微信收图→剪贴板→粘贴，UI 保留该习惯），**不在 Excel 里标红**。
+本模块只负责：给定 N 张已上传照片(2-4) → 按对应布局摆进 Excel。段一 openpyxl。
+布局实证 golden：2 张并排一行；3 张=2+1(末张居中)；4 张=2+2。col B 宽列内用 colOff 定位。
 """
-from openpyxl.styles import PatternFill, Font, Alignment
+from openpyxl.drawing.image import Image
+from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
+from openpyxl.drawing.xdr import XDRPositiveSize2D
 
 SHEET = "4.样品照片（多角度）"
-RED_FILL = PatternFill("solid", fgColor="FFC7CE")          # 浅红=待人工填
-RED_FONT = Font(name="宋体", size=12, bold=True, color="9C0006")
-CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
-ZONE_ROWS = range(11, 23)        # 照片区行（1-indexed）
-ZONE_COLS = ("B", "C")
-LABEL_CELL = "B11"
-LABEL = "⚠ 待人工插入成品照片（多角度，≥3 张）— 未插禁导出"
+EMU_CM = 360000                      # 1cm = 360000 EMU
+COL_B = 1                            # 宽内容列
+X_PAIR = [4.3, 8.5]                  # 一行两张的 colOff(cm)
+X_CENTER = 6.4                       # 单张居中 colOff(cm)
+Y_ROWS = [11, 17, 23]               # 每行起始 row(0-indexed anchor)
+Y_OFF = 0.5                          # rowOff(cm)
+PHOTO_W, PHOTO_H = 4.0, 5.0          # 单张尺寸(cm)
+
+
+def _cm(x):
+    return int(round(x * EMU_CM))
 
 
 def _anchor_col(im):
-    a = getattr(im, "anchor", None)
-    return getattr(getattr(a, "_from", None), "col", 0)
+    return getattr(getattr(getattr(im, "anchor", None), "_from", None), "col", 0)
 
 
-def fill_sample_photo(ws):
-    """删成品照(留LOGO) + 标红槽。返回删除的成品照数。"""
-    keep, removed = [], 0
-    for im in ws._images:
-        if _anchor_col(im) == 0:        # col0 = 生久 LOGO，保留
-            keep.append(im)
-        else:
-            removed += 1
-    ws._images = keep
-    for r in ZONE_ROWS:
-        for c in ZONE_COLS:
-            ws[f"{c}{r}"].fill = RED_FILL
-    ws[LABEL_CELL] = LABEL
-    ws[LABEL_CELL].font = RED_FONT
-    ws[LABEL_CELL].alignment = CENTER
-    return removed
+def photo_layout(n):
+    """N 张照片(2-4)的位置 [(col, colOff_cm, row, rowOff_cm)]。2/行, 奇数末张居中。"""
+    pos = []
+    full, rem = divmod(n, 2)
+    for r in range(full):
+        for x in X_PAIR:
+            pos.append((COL_B, x, Y_ROWS[r], Y_OFF))
+    if rem:
+        pos.append((COL_B, X_CENTER, Y_ROWS[full], Y_OFF))
+    return pos
 
 
-def selfcheck_sample_photo(ws):
+def fill_sample_photo(ws, photo_paths):
+    """清 golden 残留成品照(留 LOGO) + 按张数布局摆入 N 张上传照。返回放入张数。"""
+    ws._images = [im for im in ws._images if _anchor_col(im) == 0]   # 留 col0 LOGO
+    layout = photo_layout(len(photo_paths))
+    for path, (col, xoff, row, yoff) in zip(photo_paths, layout):
+        img = Image(path)
+        img.width, img.height = None, None    # 由 ext 定尺寸
+        marker = AnchorMarker(col=col, colOff=_cm(xoff), row=row, rowOff=_cm(yoff))
+        img.anchor = OneCellAnchor(_from=marker, ext=XDRPositiveSize2D(_cm(PHOTO_W), _cm(PHOTO_H)))
+        ws.add_image(img)
+    return len(layout)
+
+
+def selfcheck_sample_photo(ws, n_expected):
     errs = []
-    non_logo = sum(1 for im in ws._images if _anchor_col(im) != 0)
-    if non_logo:
-        errs.append(f"成品照未清净：仍有非LOGO图×{non_logo}")
-    if len(ws._images) < 1:
+    logos = [im for im in ws._images if _anchor_col(im) == 0]
+    photos = [im for im in ws._images if _anchor_col(im) != 0]
+    if not logos:
         errs.append("LOGO 被误删")
-    fill = ws[LABEL_CELL].fill
-    if not (fill and fill.fgColor and "FFC7CE" in str(fill.fgColor.rgb)):
-        errs.append("照片区未标红")
-    if "待人工" not in str(ws[LABEL_CELL].value or ""):
-        errs.append("缺待填标签")
+    if len(photos) != n_expected:
+        errs.append(f"成品照数 {len(photos)}，应 {n_expected}")
+    # 不重叠（同行两张 X 间距 ≥ 照片宽）
+    if X_PAIR[1] - X_PAIR[0] < PHOTO_W:
+        errs.append("同行两张会重叠")
     return errs
