@@ -21,12 +21,40 @@ def _norm(s):
 
 
 def _mat_tokens(matname):
-    """BOM 材质名 → 候选匹配 token(含别名 + 自身字符串)。"""
+    """BOM 材质名 → 候选匹配 token(含别名 + 自身字符串)。
+
+    别名只在 材质名==canon 或 ∈别名组 时继承, 避免子串泄漏
+    (锡 ⊂ 镀锡铜 → 镀锡铜 误吃 锡 的别名 07CU/锡线)。
+    """
     toks = {matname}
     for canon, al in ALIAS.items():
-        if canon in matname or any(a in matname for a in al):
+        if matname == canon or matname in al:
             toks.update(al); toks.add(canon)
     return {_norm(t) for t in toks if t}
+
+
+def content_match(pdf_path, materials, pages=3):
+    """⭐内容驱动:PDF 内容 → BOM 材质 index(比文件名可靠,内容含料名)。失败/无把握 None。
+
+    B 段为抽成分本就要读 PDF;读内容时即知"是哪个料",此链路白来。
+    """
+    import fitz
+    try:
+        d = fitz.open(pdf_path)
+        txt = "".join(d[i].get_text() for i in range(min(pages, d.page_count)))
+        d.close()
+    except Exception:
+        return None
+    t = _norm(txt)
+    best, bs = None, 0
+    for i, m in enumerate(materials):
+        name = (m.get("材质") or "").strip()
+        if not name:
+            continue
+        s = max((len(tok) for tok in _mat_tokens(name) if tok and tok in t), default=0)
+        if s > bs:
+            best, bs = i, s
+    return best if bs > 0 else None
 
 
 def _color(s):
