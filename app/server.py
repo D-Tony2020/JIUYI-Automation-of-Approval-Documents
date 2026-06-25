@@ -14,6 +14,8 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 import fitz
 
+from typing import List
+
 from hitl.drawing_extract import extract as draw_extract
 from hitl.fai import spec_limits
 from app import state, rules
@@ -97,6 +99,59 @@ async def confirm(job: str, request: Request):
     proj["step"] = 2
     state.save_json(job, "project.json", proj)
     return {"ok": True, "step": 2}
+
+
+# ── M2.3 BOM 脊柱(files-first·B 提议) ──────────────────────────
+@app.post("/api/order/{job}/upload-materials")
+async def upload_materials(job: str, files: List[UploadFile] = File(...)):
+    """批量上传材料 PDF 堆 → 存 materials/ + C 路由分类(file_router)。"""
+    from hitl.material_extract import classify_pile
+    mdir = state.materials_dir(job)
+    saved = []
+    for f in files:
+        with open(os.path.join(mdir, f.filename or "x.pdf"), "wb") as out:
+            out.write(await f.read())
+        saved.append(f.filename)
+    return {"saved": saved, "classify": classify_pile(mdir)}
+
+
+@app.post("/api/bom/{job}/extract")
+def bom_extract(job: str):
+    """B 读 MSDS 提议材质清单(files-first·B 提议)。缓存 stage2_bom.json 防重烧 token。"""
+    cached = state.load_json(job, "stage2_bom.json")
+    if cached and cached.get("materials"):
+        return cached
+    from hitl.material_extract import propose_bom_from_pile
+    props = propose_bom_from_pile(state.materials_dir(job))
+    for p in props:                          # 待操作员填 零件/材质类别 + 报告块核对
+        p.setdefault("零件", ""); p.setdefault("材质类别", ""); p.setdefault("已核对", False)
+    result = {"job": job, "materials": props, "confirmed": False}
+    state.save_json(job, "stage2_bom.json", result)
+    return result
+
+
+@app.get("/api/bom/{job}/state")
+def bom_state(job: str):
+    s = state.load_json(job, "stage2_bom.json")
+    if not s:
+        raise HTTPException(404, "本单未提议 BOM")
+    return s
+
+
+@app.post("/api/bom/{job}/confirm")
+async def bom_confirm(job: str, request: Request):
+    """落 BOM 脊柱, 推进第3步。后端权威校验(齐套+分组+报告块核对)。"""
+    body = await request.json()
+    missing = rules.validate_bom(body)
+    if missing:
+        raise HTTPException(422, "BOM 脊柱未齐: " + " · ".join(missing))
+    s = state.load_json(job, "stage2_bom.json", {})
+    s.update(body); s["confirmed"] = True
+    state.save_json(job, "stage2_bom.json", s)
+    proj = state.load_json(job, "project.json", {"job": job})
+    proj["step"] = 3
+    state.save_json(job, "project.json", proj)
+    return {"ok": True, "step": 3}
 
 
 app.mount("/", StaticFiles(directory=WEB, html=True), name="web")   # 前端静态, 必须最后挂

@@ -52,3 +52,22 @@ def validate_confirm(body):
         if not checked.get("dim" + str(i)):
             missing.append(f"尺寸{i + 1}未勾核")
     return missing
+
+
+def validate_bom(body):
+    """BOM 脊柱放行门(M2.3): 每材质有 零件+材质类别+供应商 + 已核对(或豁免)。空=放行。
+
+    (零件,材质类别) 是图上没有的不可约人工输入(见字段来源矩阵); 供应商 B 提议+人确认;
+    已核对 = 报告块级抽核过。"""
+    missing = []
+    mats = body.get("materials") or []
+    if not mats:
+        return ["无材质(先拖材料让B提议)"]
+    for i, m in enumerate(mats):
+        名 = (m.get("材质") or "").strip() or f"材质{i + 1}"
+        for fld in ("零件", "材质类别", "供应商"):
+            if not (m.get(fld) or "").strip():
+                missing.append(f"{名}缺{fld}")
+        if not m.get("已核对") and not m.get("豁免"):
+            missing.append(f"{名}未核对")
+    return missing

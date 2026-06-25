@@ -25,6 +25,12 @@ def drawing_dir(job):
     return d
 
 
+def materials_dir(job):
+    d = os.path.join(order_dir(job), "materials")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 def drawing_pdf(job):
     """本单图纸 PDF 路径(取 drawing/ 下第一份)。无则 None。"""
     import glob
