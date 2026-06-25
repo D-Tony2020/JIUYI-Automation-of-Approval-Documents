@@ -51,6 +51,7 @@ def parse_golden(xlsx_path):
         if mat_first not in mats:
             mats[mat_first] = {
                 "零件": _anchor_val(ws, merges, r, 2),
+                "供应商": _anchor_val(ws, merges, r, 3),
                 "材质类别": _anchor_val(ws, merges, r, 4),
                 "材质": mat_name,
                 "_mat_first": mat_first,
