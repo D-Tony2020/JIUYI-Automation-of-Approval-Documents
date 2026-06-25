@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>确认环① 图纸识别</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <!-- 顶带: 5步流进度 + 边界标签 + 本单图纸名 -->
+  <header class="topbar">
+    <div class="steps">
+      <span class="step active">①核对图纸</span><span class="step">②选型</span>
+      <span class="step">③材料</span><span class="step">④整品</span><span class="step">⑤照片</span>
+    </div>
+    <div class="boundary">本环只核对图纸 · 不碰材料文件</div>
+    <div class="dwgname" id="dwgname"></div>
+  </header>
+
+  <div class="busy" id="busy" style="display:none"></div>
+
+  <!-- 上传 -->
+  <div class="uploadbar" id="uploadbar">
+    <label class="uploadbtn">上传生久图纸 (PDF)
+      <input type="file" id="file" accept="application/pdf" hidden>
+    </label>
+    <p class="tip">上传后 qwen-vl 自动读图, 抽出品号/版本/FAI 尺寸供你对照核对。</p>
+  </div>
+
+  <!-- 工作区: 左图纸 右字段 -->
+  <main class="workspace" id="workspace" style="display:none">
+    <section class="left">
+      <div class="viewer" id="viewer"></div>
+    </section>
+    <section class="right">
+      <h3>三要素 <small>(对照图纸核对, 改错, 勾"已核对")</small></h3>
+      <div id="identity"></div>
+      <h3>FAI 受检尺寸 <small>(改中心/公差→实时重算上下限)</small></h3>
+      <div id="dims"></div>
+    </section>
+  </main>
+
+  <!-- 底带: 放行门 -->
+  <footer class="gatebar" id="gatebar">
+    <div class="summary" id="summary"></div>
+    <button class="gatebtn" id="gatebtn" disabled>核对无误, 进入第2步 →</button>
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

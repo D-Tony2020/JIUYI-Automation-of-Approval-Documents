@@ -1,0 +1,64 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft YaHei", "微软雅黑", sans-serif; color: #1f2937; background: #f3f4f6;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* 顶带 */
+.topbar { display: flex; align-items: center; gap: 16px; padding: 8px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.steps { display: flex; gap: 6px; }
+.step { font-size: 12px; padding: 3px 8px; border-radius: 10px; background: #f3f4f6; color: #9ca3af; }
+.step.active { background: #2563eb; color: #fff; }
+.boundary { font-size: 12px; color: #2563eb; border: 1px solid #bfdbfe; background: #eff6ff; padding: 2px 8px; border-radius: 4px; }
+.dwgname { margin-left: auto; font-size: 13px; color: #6b7280; }
+
+.busy { padding: 8px 16px; background: #fffbeb; color: #92400e; font-size: 13px; border-bottom: 1px solid #fde68a; }
+
+/* 上传 */
+.uploadbar { margin: auto; text-align: center; }
+.uploadbtn { display: inline-block; padding: 14px 28px; background: #2563eb; color: #fff; border-radius: 8px; cursor: pointer; font-size: 16px; }
+.uploadbtn:hover { background: #1d4ed8; }
+.tip { margin-top: 12px; color: #6b7280; font-size: 13px; }
+
+/* 工作区: 左图右表 */
+.workspace { flex: 1; display: flex; min-height: 0; }
+.left { flex: 1; min-width: 0; border-right: 1px solid #e5e7eb; background: #fff; display: flex; flex-direction: column; }
+.right { width: 420px; overflow-y: auto; padding: 12px 16px; }
+.right h3 { font-size: 14px; margin: 14px 0 8px; color: #374151; }
+.right h3 small { font-weight: normal; color: #9ca3af; font-size: 12px; }
+
+/* 图纸查看器(主角) */
+.viewer { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.viewer-stage { flex: 1; overflow: hidden; cursor: grab; display: flex; align-items: center; justify-content: center; background: #f9fafb; }
+.viewer-stage:active { cursor: grabbing; }
+.viewer-img { max-width: 100%; max-height: 100%; transform-origin: center; user-select: none; }
+.viewer-pagebar { display: flex; gap: 6px; padding: 6px; border-top: 1px solid #e5e7eb; background: #fff; }
+.pg { font-size: 12px; padding: 3px 10px; border: 1px solid #d1d5db; background: #fff; border-radius: 4px; cursor: pointer; }
+.pg.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+/* 卡片(=示意空槽图: 状态色) */
+.card { border: 1px solid #e5e7eb; border-left: 4px solid #d1d5db; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; background: #fff; }
+.card[data-st=ok] { border-left-color: #16a34a; }
+.card[data-st=todo] { border-left-color: #9ca3af; }
+.card[data-st=warn] { border-left-color: #f59e0b; background: #fffbeb; }
+.card[data-st=exempt], .card.exempt { border-left-color: #9ca3af; opacity: .6; }
+.card.exempt .seq, .card.exempt .num { text-decoration: line-through; }
+.card-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lbl { width: 40px; font-size: 13px; color: #374151; }
+.seq { font-size: 12px; background: #eef2ff; color: #4338ca; padding: 2px 8px; border-radius: 10px; }
+.inp { border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 6px; font-size: 13px; }
+.inp.num { width: 70px; text-align: center; }
+.pm { color: #6b7280; }
+.rule { font-weight: bold; font-size: 14px; }
+.rule.ok { color: #16a34a; }
+.rule.warn { color: #f59e0b; }
+.hint { font-size: 11px; color: #9ca3af; margin-left: auto; }
+.derived { font-size: 12px; color: #6b7280; margin: 6px 0; padding: 4px 6px; background: #f9fafb; border-radius: 4px; }
+.derived b { color: #111827; }
+.chk { font-size: 12px; color: #374151; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.exbtn { margin-left: auto; font-size: 11px; padding: 2px 8px; border: 1px solid #d1d5db; background: #fff; border-radius: 4px; cursor: pointer; color: #6b7280; }
+
+/* 底带放行门 */
+.gatebar { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: #fff; border-top: 1px solid #e5e7eb; }
+.summary { flex: 1; font-size: 13px; color: #6b7280; }
+.gatebtn { padding: 10px 20px; font-size: 15px; background: #16a34a; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+.gatebtn:disabled { background: #d1d5db; cursor: not-allowed; }
+.gatebtn:not(:disabled):hover { background: #15803d; }
