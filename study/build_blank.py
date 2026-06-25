@@ -61,7 +61,55 @@ def build(root):
         cleared["照片"] = n0 - len(pw[0]._images)
 
     wb.save(os.path.join(root, DST))
+    # ④ 公章去背景(zip手术换 media: 白底→透明, 避 openpyxl 图片流问题)
+    cleared["公章"] = seal_transparent_zip(os.path.join(root, DST))
     return cleared
+
+
+def seal_transparent_zip(xlsx):
+    """zip 手术: 公章(670×567)白底转透明留红章; JPEG→PNG 改名 + 更新 rels/content-types。"""
+    import io as _io
+    import os as _os
+    import zipfile
+    from PIL import Image as PI
+    z = zipfile.ZipFile(xlsx)
+    names = z.namelist()
+    target = None
+    for n in names:
+        if not n.startswith("xl/media/"):
+            continue
+        try:
+            if PI.open(_io.BytesIO(z.read(n))).size == (670, 567):
+                target = n
+                break
+        except Exception:
+            pass
+    if not target:
+        z.close()
+        return 0
+    p = PI.open(_io.BytesIO(z.read(target))).convert("RGBA")
+    px = [(r, g, bl, 0) if (r > 230 and g > 230 and bl > 230) else (r, g, bl, a)
+          for r, g, bl, a in list(p.getdata())]
+    p.putdata(px)
+    buf = _io.BytesIO()
+    p.save(buf, format="PNG")
+    new_png = buf.getvalue()
+    old_base = _os.path.basename(target)
+    new_base = old_base.rsplit(".", 1)[0] + ".png"     # image4.jpeg → image4.png
+    data_map = {n: z.read(n) for n in names}
+    z.close()
+    with zipfile.ZipFile(xlsx, "w", zipfile.ZIP_DEFLATED) as zout:
+        for n in names:
+            if n == target:
+                continue
+            d = data_map[n]
+            if n.endswith(".rels"):
+                d = d.replace(old_base.encode(), new_base.encode())
+            if n == "[Content_Types].xml" and b'Extension="png"' not in d:
+                d = d.replace(b"</Types>", b'<Default Extension="png" ContentType="image/png"/></Types>')
+            zout.writestr(n, d)
+        zout.writestr("xl/media/" + new_base, new_png)
+    return 1
 
 
 if __name__ == "__main__":

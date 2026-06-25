@@ -5,6 +5,7 @@
 两段式的"段二"，永远在 openpyxl 填格（build_upto）之后、作为终态。
 """
 import os
+import re
 import zipfile
 from contextlib import contextmanager
 
@@ -96,6 +97,23 @@ def extract_embedded_pdf(xlsx_path, ole_basename, out_pdf):
     with open(out_pdf, "wb") as f:
         f.write(data[s:e + 5])
     return out_pdf
+
+
+def original_filename(xlsx_path, ole_basename):
+    """从 OLE 包(Ole10Native)取**原始文件名**(源路径 basename)。真实场景用原名不重命名。
+
+    包头里有：友好名、源路径(F:\\…)、临时路径(C:\\…Temp)。取源路径 basename(含扩展名)。
+    """
+    with zipfile.ZipFile(xlsx_path) as z:
+        data = z.read(f"xl/embeddings/{ole_basename}")
+    head = data[:data.find(b"%PDF")] if b"%PDF" in data else data[:8000]
+    for m in re.finditer(rb"[A-Za-z]:\\[^\x00\r\n]{2,260}", head):
+        path = m.group(0).decode("gbk", "ignore")
+        if "Temp" not in path and "AppData" not in path:
+            name = os.path.basename(path.replace("\\", "/")).strip()
+            if name:
+                return name
+    return None
 
 
 def _fallback_icon(out_png):

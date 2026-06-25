@@ -7,6 +7,7 @@
 """
 import os
 import re
+import copy
 import json
 import datetime
 from openpyxl.styles import Border, Side, Alignment, Font
@@ -138,8 +139,14 @@ def _style(ws, r, c, align=CENTER):
     cell.font = FONT
 
 
+BOTTOM_COLS = 13   # 附表宽度 A:M
+
+
 def _capture_bottom_block(ws):
-    """清区前捕获底部 RoHS 排除表(标题行起到表尾)，返回 [(A值, B值)]。避免重打 22 行。"""
+    """清区前捕获底部 RoHS 排除表整块：每格(值+字体+填充+对齐+边框) + 合并 + 行高。
+
+    旧版只捕文本→浮动后字体/合并/格式全丢；现完整捕获以保真还原。
+    """
     start = None
     for r in range(40, ws.max_row + 1):
         v = ws.cell(r, 1).value
@@ -147,14 +154,29 @@ def _capture_bottom_block(ws):
             start = r
             break
     if start is None:
-        return []
-    block = [(ws.cell(r, 1).value, ws.cell(r, 2).value) for r in range(start, ws.max_row + 1)]
-    while block and block[-1][0] is None and block[-1][1] is None:
-        block.pop()
-    return block
+        return None
+    end = start
+    for r in range(start, ws.max_row + 1):
+        if any(ws.cell(r, c).value not in (None, "") for c in range(1, BOTTOM_COLS + 1)):
+            end = r
+    rows = []
+    for r in range(start, end + 1):
+        cells = []
+        for c in range(1, BOTTOM_COLS + 1):
+            cell = ws.cell(r, c)
+            cells.append((cell.value, copy.copy(cell.font), copy.copy(cell.fill),
+                          copy.copy(cell.alignment), copy.copy(cell.border)))
+        rows.append(cells)
+    merges = [(mr.min_row - start, mr.min_col, mr.max_row - start, mr.max_col)
+              for mr in ws.merged_cells.ranges
+              if start <= mr.min_row <= end and mr.max_col <= BOTTOM_COLS]
+    heights = [ws.row_dimensions[r].height for r in range(start, end + 1)]
+    return {"rows": rows, "merges": merges, "heights": heights}
 
 
 def _clear_region(ws, top, bottom):
+    """清区：解合并 + 清值 + 重置样式(避免原附表位置残留空样式格)。"""
+    from openpyxl.styles import PatternFill
     for mr in list(ws.merged_cells.ranges):
         min_c, min_r, max_c, max_r = mr.bounds
         if min_r >= top and max_r <= bottom:
@@ -162,6 +184,10 @@ def _clear_region(ws, top, bottom):
     for row in ws.iter_rows(min_row=top, max_row=bottom, min_col=1, max_col=30):
         for cell in row:
             cell.value = None
+            cell.font = Font()
+            cell.fill = PatternFill()
+            cell.border = Border()
+            cell.alignment = Alignment()
 
 
 # 报告类型 → 材质表里承载该报告 OLE 的列（实证7样本: 恒为 K/L/Y）
@@ -265,15 +291,23 @@ def inject_data(ws, bom, start_row=DATA_TOP):
 
 
 def place_bottom_block(ws, block, start_row):
-    """把捕获的底部排除表浮动摆到 start_row(B:M 合并)。"""
-    for i, (a, b) in enumerate(block):
+    """把捕获的底部排除表浮动摆到 start_row：完整还原值+字体+填充+对齐+边框+合并+行高。"""
+    rows = block["rows"]
+    for i, cells in enumerate(rows):
         r = start_row + i
-        ws.cell(r, 1, a)
-        ws.cell(r, 2, b)
-        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=13)
-        _style(ws, r, 1, CENTER)
-        _style(ws, r, 2, LEFT)
-    return start_row + len(block) - 1
+        for c, (val, font, fill, align, border) in enumerate(cells, 1):
+            cell = ws.cell(r, c)
+            cell.value = val
+            cell.font = font
+            cell.fill = fill
+            cell.alignment = align
+            cell.border = border
+        if block["heights"][i]:
+            ws.row_dimensions[r].height = block["heights"][i]
+    for dr1, c1, dr2, c2 in block["merges"]:
+        ws.merge_cells(start_row=start_row + dr1, start_column=c1,
+                       end_row=start_row + dr2, end_column=c2)
+    return start_row + len(rows) - 1
 
 
 def fill_material_table(ws, bom, product, gap=2):

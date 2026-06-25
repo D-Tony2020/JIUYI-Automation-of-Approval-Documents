@@ -55,13 +55,19 @@ def _set(ws, r, c, v):
 
 
 def write_ole_labels(wb, ole_labels):
-    """所有 OLE 表 BOM 物料标签写回(case-specific)。"""
+    """所有 OLE 表 BOM 物料标签写回(case-specific) + 还原 golden 字体/对齐(统一+对齐)。"""
     for sheet, labs in ole_labels.items():
         ws = wb[sheet] if sheet in wb.sheetnames else None
         if ws is None:
             continue
-        for r, c, txt in labs:
-            _set(ws, r, c, txt)
+        for r, c, txt, font, align in labs:
+            cell = ws.cell(r, c)
+            try:
+                cell.value = txt
+                cell.font = font
+                cell.alignment = align
+            except (AttributeError, TypeError):
+                pass
 
 
 def build_scaffold(cell_xlsx, scaffold_xlsx, ole_labels):

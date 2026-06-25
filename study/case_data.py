@@ -12,7 +12,7 @@ import zipfile
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import openpyxl
 from study.golden_parse import parse_golden, find_mat_sheet
-from hitl.ole_assemble import com_session, extract_embedded_pdf
+from hitl.ole_assemble import com_session, extract_embedded_pdf, original_filename
 from hitl.sample_photo import _anchor_col
 
 PHOTO_SHEET = "4.样品照片（多角度）"
@@ -80,6 +80,7 @@ def extract_ole_map(golden, out_dir):
     sheet_bins = _distinct_bins_per_sheet(golden)
     code = re.sub(r"[^A-Za-z0-9]", "", os.path.basename(golden))[:12]
     manifest = []
+    _used = set()
     with com_session() as xl:
         wb = xl.Workbooks.Open(os.path.abspath(golden), UpdateLinks=0, ReadOnly=True)
         for sh in wb.Worksheets:
@@ -96,8 +97,16 @@ def extract_ole_map(golden, out_dir):
                     geos.append((0, 0, 56, 42, 1, 1))
             for k, b in enumerate(bins):
                 g = geos[k] if k < len(geos) else (geos[-1] if geos else (0, 0, 56, 42, 1, 1))
-                safe = re.sub(r'[\\/:*?"<>|]', "_", sh.Name.strip())
-                pdf = os.path.join(out_dir, f"{safe}__{b.replace('.bin', '')}.pdf")
+                orig = original_filename(golden, b) or b.replace(".bin", ".pdf")   # 用原始文件名
+                fname = re.sub(r'[\\/:*?"<>|]', "_", orig)
+                if not fname.lower().endswith(".pdf"):
+                    fname += ".pdf"
+                pdf = os.path.join(out_dir, fname)
+                dup = 1
+                while pdf in _used:                       # 同名去重
+                    pdf = os.path.join(out_dir, fname[:-4] + f"_{dup}.pdf")
+                    dup += 1
+                _used.add(pdf)
                 try:
                     extract_embedded_pdf(golden, b, pdf)
                 except Exception:
@@ -115,7 +124,11 @@ _LABEL_HEADER = ("生久", "http", "承认书", "证明书", "测试报告", "�
 
 
 def extract_ole_labels(golden):
-    """所有 OLE 嵌入组表的 BOM 物料标签 {sheet名: [(row, col, text)]}（每案不同, 写回通用模板）。"""
+    """所有 OLE 嵌入组表的 BOM 物料标签 {sheet名: [(row, col, text, font, align)]}。
+
+    连同 golden 的字体/对齐一起捕获, 写回时还原 → 字体统一 + 与图标对齐(与原版一致)。
+    """
+    import copy
     wb = openpyxl.load_workbook(golden, data_only=True)
     out = {}
     for s in wb.sheetnames:
@@ -125,9 +138,11 @@ def extract_ole_labels(golden):
         labs = []
         for r in range(11, 26):
             for c in (2, 3):
-                v = ws.cell(r, c).value
+                cell = ws.cell(r, c)
+                v = cell.value
                 if v and not any(k in str(v) for k in _LABEL_HEADER):
-                    labs.append((r, c, str(v).strip()))
+                    labs.append((r, c, str(v).strip(),
+                                 copy.copy(cell.font), copy.copy(cell.alignment)))
         if labs:
             out[s] = labs
     return out
