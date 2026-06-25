@@ -1,0 +1,86 @@
+# -*- coding: utf-8 -*-
+"""B 段真接入: 材料 PDF → 材质提议(成分/RoHS)。退役 M2.1 的 content_match token 替身。
+
+照搬 study/run_study 验证过的盲测 97% 路径:
+  - 文本 = pdfplumber 表格 + 全文(表在前, 封顶14000; MSDS 窄CAS列 pdftotext会截断, 靠表格补)
+  - provider=qwen, model=qwen-plus(文本模型, 非 vl)
+  - PDF 解析守护线程超时(防本机 pdfplumber/pdftotext 随机挂起)
+  - 复用 spike/assemble 确定性后处理(CAS去空格/重量%÷100/RoHS归一/日期/供应商别名)
+
+files-first·B提议: propose_material 读 MSDS → 提议(材质名+归一成分+RoHS+报告), 不含
+零件/材质类别(操作员在 BOM 编辑器后填; 见字段来源矩阵)。
+"""
+import os
+import sys
+import re
+import threading
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_SPIKE = os.path.join(ROOT, "spike")
+for _p in (ROOT, _SPIKE):                       # spike 模块用裸名互相 import, 须加 spike/ 到 path
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import extract as _ex                           # spike/extract.py
+import assemble as _asm                         # spike/assemble.py
+from pdf_text import pdf_to_text, pdf_to_table_markdown
+
+PROVIDER, MODEL = "qwen", "qwen-plus"           # 照搬盲测97%路径(文本模型)
+_CAS = re.compile(r"\d{2,7}-\d{2}-\d")
+
+
+def _safe(fn, timeout=45):
+    """守护线程跑 fn, 超时返 None(防本机 pdfplumber/pdftotext 随机挂死)。"""
+    res = [None]
+
+    def work():
+        try:
+            res[0] = fn()
+        except Exception:
+            pass
+    t = threading.Thread(target=work, daemon=True)
+    t.start()
+    t.join(timeout)
+    return res[0]
+
+
+def pdf_text_for_llm(pdf):
+    """喂 LLM 的文本 = pdfplumber表格 + 全文(表在前, 封顶14000)。返回 (txt, full)。"""
+    full = _safe(lambda: pdf_to_text(pdf)) or ""
+    tbl = _safe(lambda: pdf_to_table_markdown(pdf) or "") or ""
+    txt = (tbl + "\n\n=== 全文 ===\n" + full) if tbl else full
+    return txt[:14000], full
+
+
+def is_msds(full_text):
+    """文本预判 MSDS 候选: ≥2 CAS + 自报 MSDS/物质安全/成分(排除纯 RoHS Test Report)。"""
+    if len(_CAS.findall(full_text)) < 2:
+        return False
+    return bool(re.search(
+        r"MSDS|\bSDS\b|Safety Data Sheet|物[质質]安全|材料安全|安全(技术|資料|资料)|"
+        r"成分|成份|組成|组成|组份|composition|含量|wt\s*%", full_text, re.I))
+
+
+def to_proposal(msds, rohs=None):
+    """msds/rohs 抽取 dict → 材质提议(归一)。纯函数(零件/材质类别留操作员填)。"""
+    row = _asm.assemble_row(msds, rohs or {}, "", "", msds.get("material_name", ""))
+    return {
+        "材质": (msds.get("material_name") or "").strip(),
+        "供应商原文": (msds.get("supplier_name_raw") or "").strip(),
+        "供应商": row["原材料供应商"],          # 别名归一后(未命中则原文, 交人工)
+        "成份": row["成份"],                     # [{成份名称, CAS(去空格), 重量%(÷100)}]
+        "RoHS": row["RoHS"],                     # 10项归一
+        "报告编号": row["检测报告编号"],
+        "报告日期": row["检测报告日期"],
+    }
+
+
+def propose_material(msds_pdf, rohs_pdf=None, provider=PROVIDER, model=MODEL):
+    """B 读 MSDS(+可选RoHS) → 材质提议。供 files-first·B提议 流。"""
+    txt, _ = pdf_text_for_llm(msds_pdf)
+    msds = _ex.extract_msds(txt, provider, model)
+    rohs = {}
+    if rohs_pdf:
+        rtxt, _ = pdf_text_for_llm(rohs_pdf)
+        rohs = _ex.extract_rohs(rtxt, provider, model)
+    return to_proposal(msds, rohs)
