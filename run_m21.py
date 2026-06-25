@@ -18,7 +18,8 @@ from hitl.file_router import route
 from hitl.file_match import content_match, match_material
 from hitl.build import build_upto
 from hitl.ole_assemble import make_icon, embed_many, count_ole, verify_open
-from hitl.material_table import compute_layout, DATA_TOP, OLE_COL
+from hitl.material_table import compute_layout, DATA_TOP
+from hitl.ole_placement import ev_col, part_top, mat_anchors_nocrutch
 from hitl import sample_photo
 from study.embed_structure import (grid_anchors, GRID, MATCERT_W, MATCERT_H,
                                     MATCERT_PART_TOPS, MATCERT_X0, MATCERT_DX)
@@ -35,7 +36,8 @@ SKIP = {"YY60039397"}            # 损坏 golden(嵌错图)
 
 SHORT_KW = {"材质表": "材质成分", "材质证明": "材质证明", "部件承认": "部件",
             "UL": "UL", "信赖性": "信赖", "包装": "包装", "出货": "出货", "图纸": "图纸"}
-DEFAULT_ANCHOR = {"包装": (95, 250, 90, 50), "出货": (95, 250, 90, 50), "图纸": (40, 40, 320, 220)}
+# 单OLE表固定模板位(取自golden, 各案近恒定; 非per-case crutch, 同GRID性质)
+DEFAULT_ANCHOR = {"图纸": (183, 266, 152, 42), "包装": (208, 271, 112, 60), "出货": (193, 261, 159, 42)}
 
 
 def full_sheet(names, short):
@@ -46,28 +48,10 @@ def full_sheet(names, short):
     return None
 
 
-def part_top(name):
-    """零件 → 材质证明书该零件行的 Top。按**零件类型**(非序号)对齐标签行,
-    使产品用零件子集时(如只有线材+锡)锡仍落到锡的类型行,与标签对齐。"""
-    i = (3 if "锡" in name else
-         2 if any(k in name for k in ("套", "热缩", "管")) else
-         1 if any(k in name for k in ("胶", "端子")) else 0)
-    return MATCERT_PART_TOPS[i] if i < len(MATCERT_PART_TOPS) else MATCERT_PART_TOPS[-1]
-
-
 def identify(pdf, base, flat):
     """料 identity:内容驱动优先(可靠), 认不出(繁体/英文content)回退文件名匹配。"""
     mi = content_match(pdf, flat)
     return mi if mi is not None else match_material(base, flat)
-
-
-def ev_col(name):
-    up = name.upper()
-    if "ROHS" in up:
-        return OLE_COL["RoHS"]
-    if "REACH" in up or "SVHC" in up:
-        return OLE_COL["REACH"]
-    return OLE_COL["MSDS"]
 
 
 def write_ole_labels(wb, ole_labels):
@@ -82,21 +66,6 @@ def write_ole_labels(wb, ole_labels):
                 cell.value, cell.font, cell.alignment = txt, font, align
             except (AttributeError, TypeError):
                 pass
-
-
-def mat_anchors_nocrutch(bom, mt_specs, start_row=DATA_TOP):
-    layout = compute_layout(bom, start_row)
-    mat_first = [M["blocks"][0]["first"] if M["blocks"] else M["first"]
-                 for P in layout["parts"] for M in P["materials"]]
-    used, res = {}, []
-    for s in mt_specs:
-        mi = s.get("mat_idx")
-        row0 = mat_first[mi] if (mi is not None and mi < len(mat_first)) else (mat_first[0] if mat_first else start_row)
-        col = s["col"]
-        rr = row0 + used.get((row0, col), 0)
-        used[(row0, col)] = used.get((row0, col), 0) + 1
-        res.append((rr, col))
-    return res
 
 
 def run_case(code, golden):
@@ -131,7 +100,7 @@ def run_case(code, golden):
                 continue
             if short == "材质表":
                 mi, col = identify(f, base, flat), ev_col(base)  # 内容驱动+文件名回退 真
-                if mi is not None and (mi, col) in seen_mt:      # 同(料,证据列)只留一份
+                if mi is None or (mi, col) in seen_mt:           # 认不出料的不硬塞(避错行+重叠)→确认环②; 同(料,列)一份
                     continue
                 seen_mt.add((mi, col))
                 sp = {"sheet": fs, "pdf": f, "short": short, "mat_idx": mi, "col": col, "W": 56, "H": 42}
