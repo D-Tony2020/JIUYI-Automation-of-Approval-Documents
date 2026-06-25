@@ -17,7 +17,8 @@ from hitl.build import build_upto
 from hitl.harness import assert_no_external_links
 from hitl.ole_assemble import make_icon, embed_many, count_ole, verify_open
 from hitl.material_table import material_ole_anchors, MAT_SHEET
-from study.embed_structure import count_from_bom, grid_anchors, GRID, SHEET_SHORT
+from study.embed_structure import (count_from_bom, grid_anchors, GRID, SHEET_SHORT,
+                                    matcert_anchors, MATCERT_W, MATCERT_H)
 from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -58,11 +59,17 @@ def main():
         if not grp:
             continue
         n = counts.get(short, len(grp))
-        g = GRID[short]
-        for spec, (L, T) in zip(grp, grid_anchors(len(grp), **g)):
-            spec["L"], spec["T"], spec["W"], spec["H"] = L, T, g["w"], g["h"]
-            spec.pop("row", None)
-            spec.pop("col", None)
+        if short == "材质证明书":           # 按零件分组(每零件其材质数张横排)
+            for spec, (L, T) in zip(grp, matcert_anchors(DATA["bom"])):
+                spec["L"], spec["T"], spec["W"], spec["H"] = L, T, MATCERT_W, MATCERT_H
+                spec.pop("row", None)
+                spec.pop("col", None)
+        else:                              # 部件/UL/信赖性: 单行 grid
+            g = GRID[short]
+            for spec, (L, T) in zip(grp, grid_anchors(len(grp), **g)):
+                spec["L"], spec["T"], spec["W"], spec["H"] = L, T, g["w"], g["h"]
+                spec.pop("row", None)
+                spec.pop("col", None)
         struct_info.append(f"{short}={len(grp)}(BOM算{n})")
 
     # 其余表(图纸/包装/出货): 1 槽 golden 绝对

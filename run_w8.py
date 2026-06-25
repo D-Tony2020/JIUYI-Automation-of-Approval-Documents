@@ -20,7 +20,8 @@ from hitl.harness import assert_no_external_links
 from hitl.ole_assemble import make_icon, embed_many, count_ole
 from hitl.material_table import material_ole_anchors, MAT_SHEET
 from hitl import sample_photo, validate
-from study.embed_structure import count_from_bom, grid_anchors, GRID, SHEET_SHORT
+from study.embed_structure import (count_from_bom, grid_anchors, GRID, SHEET_SHORT,
+                                    matcert_anchors, MATCERT_W, MATCERT_H)
 from study.golden_parse import parse_golden
 from collections import defaultdict
 
@@ -78,10 +79,15 @@ def build_ole_specs():
         grp = by_sheet.get(full, [])
         if not grp:
             continue
-        g = GRID[short]
-        for s, (L, T) in zip(grp, grid_anchors(len(grp), **g)):
-            s["L"], s["T"], s["W"], s["H"] = L, T, g["w"], g["h"]
-            s.pop("row", None); s.pop("col", None)
+        if short == "材质证明书":           # 按零件分组(每零件其材质数张横排)
+            for s, (L, T) in zip(grp, matcert_anchors(DATA["bom"])):
+                s["L"], s["T"], s["W"], s["H"] = L, T, MATCERT_W, MATCERT_H
+                s.pop("row", None); s.pop("col", None)
+        else:                              # 部件/UL/信赖性: 单行 grid
+            g = GRID[short]
+            for s, (L, T) in zip(grp, grid_anchors(len(grp), **g)):
+                s["L"], s["T"], s["W"], s["H"] = L, T, g["w"], g["h"]
+                s.pop("row", None); s.pop("col", None)
     handled = {MAT_SHEET.strip()} | set(SHEET_SHORT.keys())
     for s in specs:
         if s["sheet"].strip() not in handled:

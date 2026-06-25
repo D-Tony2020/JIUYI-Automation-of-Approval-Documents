@@ -52,6 +52,27 @@ def grid_anchors(n, x0, y0, per_row, dx, dy, **_):
     return [(x0 + (i % per_row) * dx, y0 + (i // per_row) * dy) for i in range(n)]
 
 
+# 材质证明书：按零件分组（每零件其材质数张证明横排在该零件标签行）。
+# 各零件行 Top 实证 golden（对应模板标签 B12线材/B14胶壳端子/B17套管/B20锡）。
+MATCERT_PART_TOPS = [283, 343, 420, 505]
+MATCERT_X0, MATCERT_DX = 105, 76
+MATCERT_W, MATCERT_H = 64, 42
+
+
+def matcert_anchors(bom):
+    """材质证明书按零件分组的证明位置 [(L, T)]：每零件其材质数张横排在该零件行。
+
+    bom=零件list(每零件含 materials)。换产品时零件数/每零件材质数变, 分组自动跟着对。
+    """
+    pos = []
+    for i, part in enumerate(bom):
+        top = (MATCERT_PART_TOPS[i] if i < len(MATCERT_PART_TOPS)
+               else MATCERT_PART_TOPS[-1] + (i - len(MATCERT_PART_TOPS) + 1) * 82)
+        for j in range(len(part.get("materials", []))):
+            pos.append((MATCERT_X0 + j * MATCERT_DX, top))
+    return pos
+
+
 def count_from_bom(bom):
     """W6 用：吃 demo_bom（零件list，每零件含 materials）→ 各嵌入组表槽位数。"""
     nmat = sum(len(p.get("materials", [])) for p in bom)
