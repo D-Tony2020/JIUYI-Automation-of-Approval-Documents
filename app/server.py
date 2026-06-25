@@ -154,4 +154,14 @@ async def bom_confirm(job: str, request: Request):
     return {"ok": True, "step": 3}
 
 
+@app.post("/api/bom/{job}/save")
+async def bom_save(job: str, request: Request):
+    """中途草稿存(不校验), 防刷新丢操作员已填的 零件/类别/勾核。"""
+    body = await request.json()
+    s = state.load_json(job, "stage2_bom.json", {})
+    s.update(body)
+    state.save_json(job, "stage2_bom.json", s)
+    return {"ok": True}
+
+
 app.mount("/", StaticFiles(directory=WEB, html=True), name="web")   # 前端静态, 必须最后挂

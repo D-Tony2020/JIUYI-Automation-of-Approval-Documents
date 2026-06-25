@@ -1,0 +1,44 @@
+/* M2.3 BOM 编辑器增量(在 app.css 之后加载, 不改 app.css; 状态色继承 .card[data-st]) */
+.bom-ws { flex-direction: column; overflow-y: auto; padding: 8px 16px; }
+.step.done { background: #d1fae5; color: #065f46; }
+
+/* 工具行(sticky) */
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 0; position: sticky; top: 0; background: #f3f4f6; z-index: 5; border-bottom: 1px solid #e5e7eb; }
+.toolbar button, .toolbar select, .toolbar input { font-size: 13px; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; cursor: pointer; }
+.toolbar label { font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+#search { min-width: 180px; cursor: text; }
+
+/* 分组 + 待认领置顶 */
+.part-head { font-size: 13px; font-weight: bold; color: #374151; padding: 8px 4px 4px; }
+.part-head small { font-weight: normal; color: #9ca3af; }
+.part-head.warn { color: #b45309; }
+.unclaimed { border: 1px dashed #f59e0b; background: #fffbeb; border-radius: 6px; padding: 4px 8px; margin-bottom: 10px; }
+.part-group { margin-bottom: 6px; }
+
+/* 材质卡 */
+.mat-card { padding: 6px 8px; }
+.mat-card.manual { border-left-color: #ea580c !important; }
+.manual-tag { font-size: 11px; color: #ea580c; margin-bottom: 2px; }
+.dup-tag { font-size: 11px; color: #b45309; background: #fffbeb; padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; }
+.dup-tag button { font-size: 11px; margin-left: 4px; padding: 1px 6px; }
+.mat-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.matname { min-width: 110px; font-weight: 600; font-size: 13px; }
+.part-sel.need { border-color: #ef4444; color: #b91c1c; }
+.sup { width: 110px; }
+.sup-todo { border-color: #9ca3af; }
+.sup-warn { border-color: #f59e0b; background: #fffbeb; }
+.sup-ok { border-color: #16a34a; }
+.pill { font-size: 11px; background: #eef2ff; color: #4338ca; padding: 2px 8px; border-radius: 10px; }
+.expbtn, .exbtn { font-size: 11px; padding: 2px 8px; border: 1px solid #d1d5db; background: #fff; border-radius: 4px; cursor: pointer; }
+
+/* 报告块速览(单材质单报告) */
+.block { margin: 6px 0 2px; padding: 6px 8px; background: #f9fafb; border-radius: 4px; font-size: 12px; }
+.block.warn { background: #fffbeb; border: 1px solid #fde68a; }
+.block-head { color: #6b7280; margin-bottom: 4px; }
+.block-warn { color: #b45309; font-weight: bold; margin-bottom: 4px; }
+table.comp { border-collapse: collapse; width: 100%; margin-bottom: 4px; }
+table.comp th, table.comp td { border: 1px solid #e5e7eb; padding: 2px 6px; text-align: left; }
+.rohs { display: flex; gap: 3px; flex-wrap: wrap; }
+.rohs-pill { font-size: 11px; padding: 1px 5px; border-radius: 8px; }
+.rohs-pill.ok { background: #f3f4f6; color: #6b7280; }
+.rohs-pill.bad { background: #fee2e2; color: #b91c1c; font-weight: bold; }

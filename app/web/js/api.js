@@ -31,3 +31,30 @@ export async function confirm(job, payload) {
 export function pageUrl(job, n) {
   return `/api/drawing/${job}/page/${n}.png`;
 }
+
+// ── M2.3 BOM 脊柱 ──────────────────────────────────────────
+export async function uploadMaterials(job, files) {
+  const fd = new FormData();
+  for (const f of files) fd.append("files", f);
+  return _json(`/api/order/${job}/upload-materials`, { method: "POST", body: fd });
+}
+
+export async function bomExtract(job) {
+  return _json(`/api/bom/${job}/extract`, { method: "POST" });
+}
+
+export async function getBomState(job) {
+  return _json(`/api/bom/${job}/state`);
+}
+
+export async function bomSave(job, payload) {
+  return _json(`/api/bom/${job}/save`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
+}
+
+export async function bomConfirm(job, payload) {
+  return _json(`/api/bom/${job}/confirm`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
+}

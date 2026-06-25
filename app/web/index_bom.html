@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>确认环③ BOM 脊柱</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/bom.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="steps">
+      <span class="step done">①核对图纸</span><span class="step done">②选型</span>
+      <span class="step active">③BOM脊柱</span><span class="step">④文件树</span><span class="step">⑤照片</span>
+    </div>
+    <div class="boundary">本环搭 BOM 脊柱 · 只归料不碰文件树</div>
+    <div class="dwgname" id="dwgname"></div>
+  </header>
+
+  <div class="busy" id="busy" style="display:none"></div>
+
+  <div class="uploadbar" id="uploadbar">
+    <label class="uploadbtn">上传材料 PDF 堆（可多选）
+      <input type="file" id="file" accept="application/pdf" multiple hidden>
+    </label>
+    <p class="tip">上传后 qwen 读 MSDS 自动提议材质清单；你把材质归到零件、定材质类别、确认供应商、逐料核对。</p>
+  </div>
+
+  <main class="workspace bom-ws" id="workspace" style="display:none">
+    <div class="toolbar" id="toolbar"></div>
+    <div class="bomtable" id="bomtable"></div>
+  </main>
+
+  <footer class="gatebar" id="gatebar">
+    <div class="summary" id="summary"></div>
+    <button class="gatebtn" id="gatebtn" disabled>BOM脊柱已齐，进入第4步 →</button>
+  </footer>
+
+  <script type="module" src="js/main_bom.js"></script>
+</body>
+</html>
