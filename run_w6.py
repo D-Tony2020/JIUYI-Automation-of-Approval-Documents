@@ -18,7 +18,7 @@ from hitl.harness import assert_no_external_links
 from hitl.ole_assemble import make_icon, embed_many, count_ole, verify_open
 from hitl.material_table import material_ole_anchors, MAT_SHEET
 from study.embed_structure import (count_from_bom, grid_anchors, GRID, SHEET_SHORT,
-                                    matcert_anchors, MATCERT_W, MATCERT_H)
+                                    matcert_anchors, MATCERT_W, MATCERT_H, spatial_order)
 from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -58,6 +58,7 @@ def main():
         grp = by_sheet.get(full, [])
         if not grp:
             continue
+        grp = spatial_order(grp)           # 先按 golden 空间序排, 保文件↔标签对应
         n = counts.get(short, len(grp))
         if short == "材质证明书":           # 按零件分组(每零件其材质数张横排)
             for spec, (L, T) in zip(grp, matcert_anchors(DATA["bom"])):

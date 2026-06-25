@@ -21,7 +21,7 @@ from hitl.ole_assemble import make_icon, embed_many, count_ole
 from hitl.material_table import material_ole_anchors, MAT_SHEET
 from hitl import sample_photo, validate
 from study.embed_structure import (count_from_bom, grid_anchors, GRID, SHEET_SHORT,
-                                    matcert_anchors, MATCERT_W, MATCERT_H)
+                                    matcert_anchors, MATCERT_W, MATCERT_H, spatial_order)
 from study.golden_parse import parse_golden
 from collections import defaultdict
 
@@ -79,6 +79,7 @@ def build_ole_specs():
         grp = by_sheet.get(full, [])
         if not grp:
             continue
+        grp = spatial_order(grp)           # 先按 golden 空间序排, 保文件↔标签对应
         if short == "材质证明书":           # 按零件分组(每零件其材质数张横排)
             for s, (L, T) in zip(grp, matcert_anchors(DATA["bom"])):
                 s["L"], s["T"], s["W"], s["H"] = L, T, MATCERT_W, MATCERT_H

@@ -73,6 +73,27 @@ def matcert_anchors(bom):
     return pos
 
 
+def spatial_order(specs):
+    """按 golden 空间序排 specs（行分组：T 相近为同行，行内按 L 左→右），保文件↔标签对应。
+
+    装配按结构算位置(grid/part)是按"顺序"填的；必须先让 specs 的顺序 = golden 里的
+    左右上下顺序，最左的才落到算出位置的最左槽——否则文件与标签装反。
+    """
+    s = sorted(specs, key=lambda x: (x.get("T", 0), x.get("L", 0)))
+    rows, cur, last = [], [], None
+    for sp in s:
+        t = sp.get("T", 0)
+        if last is not None and t - last > 25:   # T 跳变>25pt=换行
+            rows.append(cur); cur = []
+        cur.append(sp); last = t
+    if cur:
+        rows.append(cur)
+    out = []
+    for r in rows:
+        out.extend(sorted(r, key=lambda x: x.get("L", 0)))
+    return out
+
+
 def count_from_bom(bom):
     """W6 用：吃 demo_bom（零件list，每零件含 materials）→ 各嵌入组表槽位数。"""
     nmat = sum(len(p.get("materials", [])) for p in bom)
