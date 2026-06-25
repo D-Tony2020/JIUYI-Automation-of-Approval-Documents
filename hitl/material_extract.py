@@ -89,9 +89,10 @@ def is_msds_name(base):
             or any(k in base for k in ("物質安全", "物质安全", "安全资料", "安全資料")))
 
 
-def is_msds(full_text):
-    """文本预判 MSDS 候选: ≥2 CAS + 自报 MSDS/物质安全/成分(排除纯 RoHS Test Report)。"""
-    if len(_CAS.findall(full_text)) < 2:
+def is_msds(full_text, min_cas=2):
+    """文本预判 MSDS 候选: ≥min_cas CAS + 自报 MSDS/物质安全/成分(排除纯 RoHS Test Report)。
+    min_cas=1 用于文件名已确认是 MSDS 的场景: 简单料(纯锡焊料 Sn-0.7Cu)只 1 个可识 CAS, 别误伤。"""
+    if len(_CAS.findall(full_text)) < min_cas:
         return False
     return bool(re.search(
         r"MSDS|\bSDS\b|Safety Data Sheet|物[质質]安全|材料安全|安全(技术|資料|资料)|"
@@ -149,8 +150,8 @@ def propose_bom_from_pile(materials_dir, provider=PROVIDER, model=MODEL):
         if "材质表" not in route(base) or not is_msds_name(base):   # 只取真MSDS(排REACH/SVHC/ROHS报告)
             continue
         txt, full = pdf_text_for_llm(f)
-        if not is_msds(full):                            # 再内容确认(双保险)
-            continue
+        if not is_msds(full, min_cas=0):                 # 文件名已强过滤报告, 内容门只确认MSDS关键词;
+            continue                                     # 简单料(07CU锡线写"Sn-0.7Cu"非CAS号)0个可识CAS也别漏
         try:
             prop = to_proposal(_cached_extract(txt, "msds", provider, model))
         except Exception:
