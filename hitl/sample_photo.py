@@ -15,13 +15,15 @@ from PIL import Image as PILImage
 SHEET = "4.样品照片（多角度）"
 EMU_CM = 360000
 COL_B = 1                 # 宽内容列
-BASE_ROW = 11             # 照片区基准行(0-indexed)
+TOP_ROW = 11              # 竖照(小)锚定行(0-indexed) → 上排
+LONG_ROW = 17             # 横照(长)锚定行(0-indexed) → 下排(各自的行, 不靠大rowOff避免WPS截断)
 X0 = 3.0                  # 首张 colOff(cm)
 GAP = 0.4                 # 间距(cm)
+ROWOFF = 0.3              # 行内 rowOff(cm)
 ASPECT_SPLIT = 1.0        # <1 竖(小) / ≥1 横(长)
 H_PORTRAIT = 5.0          # 竖照统一高(cm)，宽=高×宽高比
-LAND_WMAX, LAND_HMAX = 13.0, 7.0   # 横照限框(cm)，按比例缩放进框
-TOP_OFF = 0.3             # 上排 rowOff(cm)
+LAND_WMAX, LAND_HMAX = 9.0, 5.0    # 横照限框(cm)；宽 0.7×原13≈9(老板要求缩小)
+ROW_CM = 0.99             # 行高约 28pt ≈ 0.99cm(多横照换行用)
 
 
 def _cm(x):
@@ -40,34 +42,32 @@ def _aspect(path):
         return 0.7
 
 
-def _place(ws, path, x_cm, y_cm, w_cm, h_cm):
+def _place(ws, path, x_cm, from_row, y_cm, w_cm, h_cm):
     img = Image(path)
-    marker = AnchorMarker(col=COL_B, colOff=_cm(x_cm), row=BASE_ROW, rowOff=_cm(y_cm))
+    marker = AnchorMarker(col=COL_B, colOff=_cm(x_cm), row=from_row, rowOff=_cm(y_cm))
     img.anchor = OneCellAnchor(_from=marker, ext=XDRPositiveSize2D(_cm(w_cm), _cm(h_cm)))
     ws.add_image(img)
     return (w_cm, h_cm)
 
 
 def plan_layout(aspects):
-    """给定各照宽高比 → [(x_cm, y_cm, w_cm, h_cm)]，保留比例。竖照侧排、横照满宽下置。"""
+    """各照宽高比 → [(x_cm, from_row, rowOff_cm, w_cm, h_cm)]，保比例。竖照上排侧排、横照下排满宽。"""
     out = [None] * len(aspects)
-    idx_p = [i for i, a in enumerate(aspects) if a < ASPECT_SPLIT]   # 竖/小
-    idx_l = [i for i, a in enumerate(aspects) if a >= ASPECT_SPLIT]  # 横/长
-    # 竖照：同高 H_PORTRAIT，宽=高×比，侧排
+    idx_p = [i for i, a in enumerate(aspects) if a < ASPECT_SPLIT]   # 竖/小 → 上排
+    idx_l = [i for i, a in enumerate(aspects) if a >= ASPECT_SPLIT]  # 横/长 → 下排
     x = X0
     for i in idx_p:
         w = H_PORTRAIT * aspects[i]
-        out[i] = (x, TOP_OFF, w, H_PORTRAIT)
+        out[i] = (x, TOP_ROW, ROWOFF, w, H_PORTRAIT)
         x += w + GAP
-    # 横照：限框 LAND_WMAX×LAND_HMAX 内按比例缩放，满宽堆叠在竖排下方
-    y = TOP_OFF + (H_PORTRAIT + GAP if idx_p else 0)
+    row = LONG_ROW
     for i in idx_l:
         a = aspects[i]
         w, h = LAND_WMAX, LAND_WMAX / a
         if h > LAND_HMAX:
             h, w = LAND_HMAX, LAND_HMAX * a
-        out[i] = (X0, y, w, h)
-        y += h + GAP
+        out[i] = (X0, row, ROWOFF, w, h)
+        row += int(h / ROW_CM) + 1      # 多横照各占自己的行带, 往下堆叠
     return out
 
 
@@ -75,8 +75,8 @@ def fill_sample_photo(ws, photo_paths):
     """清 golden 残照(留LOGO) + 按原图比例动态摆 N 张上传照(只缩放不变形)。返回张数。"""
     ws._images = [im for im in ws._images if _anchor_col(im) == 0]
     aspects = [_aspect(p) for p in photo_paths]
-    for path, (x, y, w, h) in zip(photo_paths, plan_layout(aspects)):
-        _place(ws, path, x, y, w, h)
+    for path, (x, r, y, w, h) in zip(photo_paths, plan_layout(aspects)):
+        _place(ws, path, x, r, y, w, h)
     return len(photo_paths)
 
 
