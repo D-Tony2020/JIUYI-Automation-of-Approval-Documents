@@ -88,10 +88,13 @@ def run_case(golden):
         "bom": cd["bom"],
         "dimensions": cd["dimensions"],
     }
-    os.makedirs(OUTDIR, exist_ok=True)
-    cell = os.path.join(OUTDIR, f"_{code}_cell.xlsx")
-    scaffold = os.path.join(OUTDIR, f"{code}_图纸特异性空白.xlsx")
-    final = os.path.join(OUTDIR, f"{code}_封装承认书.xlsx")
+    # 每案三位一体: 一个文件夹含 1通用/2图纸特异性/3封装
+    folder = os.path.join(OUTDIR, code)
+    os.makedirs(folder, exist_ok=True)
+    shutil.copy(BLANK, os.path.join(folder, "1_通用空白模板.xlsx"))
+    cell = os.path.join(folder, "_cell.xlsx")
+    scaffold = os.path.join(folder, "2_图纸特异性空白模板.xlsx")
+    final = os.path.join(folder, "3_封装承认书.xlsx")
 
     # 段一: cells + 材质证明标签 + 照片
     build_upto(BLANK, cell, data, upto=4, highlight=False)
@@ -126,6 +129,8 @@ def run_case(golden):
     g_photo = len(cd["photos"])
     f_photo = sum(1 for im in fwb[[s for s in fwb.sheetnames if s.strip() == PHOTO.strip()][0]]._images
                   if sample_photo._anchor_col(im) != 0)
+    if os.path.exists(cell):
+        os.remove(cell)      # 删中间产物
     return {"code": code, "材质": len(mats), "尺寸": len(cd["dimensions"]),
             "ole": count_ole(final), "data_diff": data_diff,
             "ole_sheet_match": (ole_match, len(g_ole)), "photo": (f_photo, g_photo),
@@ -133,8 +138,7 @@ def run_case(golden):
 
 
 def main():
-    shutil.copy(BLANK, os.path.join(OUTDIR if os.path.isdir(OUTDIR) else os.makedirs(OUTDIR) or OUTDIR,
-                                    "通用空白模板.xlsx"))
+    os.makedirs(OUTDIR, exist_ok=True)
     cases = sorted([p for p in __import__("glob").glob(os.path.join(CASES_DIR, "*.xlsx"))
                     if not os.path.basename(p).startswith("~$")])
     print(f"=== 7 案端到端全量测试 ===\n")
@@ -149,7 +153,7 @@ def main():
         print(f"{flag} {r['code']}: 材质{r['材质']} 尺寸{r['尺寸']} | OLE装{r['ole']} "
               f"各表计数{r['ole_sheet_match'][0]}/{r['ole_sheet_match'][1]} "
               f"照片{r['photo'][0]}/{r['photo'][1]} 数据diff{r['data_diff']}")
-    print(f"\n产出(产出留档/E2E/): 通用空白模板 + 各案[图纸特异性空白 + 封装承认书]")
+    print(f"\n产出(产出留档/E2E/<案>/): 每案三位一体 = 1_通用空白模板 + 2_图纸特异性空白模板 + 3_封装承认书")
 
 
 if __name__ == "__main__":
