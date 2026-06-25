@@ -4,6 +4,11 @@
 照片来源=前端 UI 用户手动上传（微信收图→剪贴板→粘贴，UI 保留该习惯），**不在 Excel 里标红**。
 本模块只负责：给定 N 张已上传照片(2-4) → 按对应布局摆进 Excel。段一 openpyxl。
 布局实证 golden：2 张并排一行；3 张=2+1(末张居中)；4 张=2+2。col B 宽列内用 colOff 定位。
+
+⏸ 挂起优化（潜在升级点，全套手测若有排版问题再执行）：
+   当前用统一 4×5cm 槽，**未考虑照片尺寸/宽高比不一**。客户反映实际常是「2小1长」「3小一长」
+   ——有"长"照(细长条，如整线展开照)+"小"照(方形细节照)。优化方向：按每张实际宽高比 + 长/小
+   分类自适应（长照占满宽一行、小照并排），而非等尺寸槽。状态：挂起。
 """
 from openpyxl.drawing.image import Image
 from openpyxl.drawing.spreadsheet_drawing import OneCellAnchor, AnchorMarker
