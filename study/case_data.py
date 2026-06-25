@@ -110,6 +110,18 @@ def extract_ole_map(golden, out_dir):
     return manifest
 
 
+def extract_matcert_labels(golden):
+    """材质证明书 零件标签 [(row, text)]（每案不同, 写回通用模板用）。"""
+    wb = openpyxl.load_workbook(golden, data_only=True)
+    ws = [wb[s] for s in wb.sheetnames if "材质证明" in s][0]
+    out = []
+    for r in range(11, 24):
+        v = ws.cell(r, 2).value
+        if v and not any(k in str(v) for k in ["生久", "http", "证明书"]):
+            out.append((r, str(v).strip()))
+    return out
+
+
 def extract_photos(golden, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     wb = openpyxl.load_workbook(golden)
@@ -163,16 +175,8 @@ def extract_case(golden, root_out):
     code = re.sub(r"[^A-Za-z0-9]", "", os.path.basename(golden))[:10]
     d = os.path.join(root_out, code)
     bom_mats = parse_golden(golden)
-    # bom → 零件结构(list, 每零件含 materials), 供 compute_layout/count_from_bom
-    parts = {}
-    order = []
-    for m in bom_mats:
-        p = (m["零件"] or "").strip()
-        if p not in parts:
-            parts[p] = {"零件": p, "供应商": "", "materials": []}
-            order.append(p)
-        parts[p]["materials"].append(m)
-    bom = [parts[p] for p in order]
+    bom = to_inject_bom(bom_mats)          # 嵌套块格式(供 inject_data/compute_layout/count_from_bom)
+    order = [p["零件"] for p in bom]
     return {
         "code": code,
         "golden": golden,
@@ -183,6 +187,7 @@ def extract_case(golden, root_out):
         "parts": order,
         "ole_map": extract_ole_map(golden, os.path.join(d, "ole")),
         "photos": extract_photos(golden, os.path.join(d, "photos")),
+        "matcert_labels": extract_matcert_labels(golden),
     }
 
 
