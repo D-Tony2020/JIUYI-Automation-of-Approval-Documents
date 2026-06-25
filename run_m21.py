@@ -22,7 +22,7 @@ from hitl.material_table import compute_layout, DATA_TOP, OLE_COL
 from hitl import sample_photo
 from study.embed_structure import grid_anchors, GRID, matcert_anchors, MATCERT_W, MATCERT_H
 from study.golden_parse import parse_golden
-from study.case_data import to_inject_bom, _distinct_bins_per_sheet
+from study.case_data import to_inject_bom, _distinct_bins_per_sheet, extract_ole_labels
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PSEUDO_ROOT = os.path.join(ROOT, "本单输入", "pseudo")
@@ -52,6 +52,20 @@ def ev_col(name):
     if "REACH" in up or "SVHC" in up:
         return OLE_COL["REACH"]
     return OLE_COL["MSDS"]
+
+
+def write_ole_labels(wb, ole_labels):
+    """OLE 表 BOM 料/件名标签写回。标签文本=A2(BOM)内容(骨架取自golden=A2 mock); 字体/位置随之。"""
+    for sheet, labs in ole_labels.items():
+        if sheet not in wb.sheetnames:
+            continue
+        ws = wb[sheet]
+        for r, c, txt, font, align in labs:
+            try:
+                cell = ws.cell(r, c)
+                cell.value, cell.font, cell.alignment = txt, font, align
+            except (AttributeError, TypeError):
+                pass
 
 
 def mat_anchors_nocrutch(bom, mt_specs, start_row=DATA_TOP):
@@ -86,22 +100,34 @@ def run_case(code, golden):
     build_upto(BLANK, cell, data, upto=4, highlight=False)
     wb = openpyxl.load_workbook(cell)
     sample_photo.fill_sample_photo(wb[sample_photo.SHEET], sorted(glob.glob(os.path.join(pseudo, "photos", "*"))))
+    write_ole_labels(wb, extract_ole_labels(golden))             # OLE表料/件名标签(A2 mock)
     wb.save(cell)
     names = wb.sheetnames
 
+    # 路由 + 内容匹配 → 候选; 按 一材一证 / 一材每证据列一份 去重(收高召回超报)
     specs, mt_specs = [], []
+    seen_mt, seen_cert = set(), set()
     for f in sorted(glob.glob(os.path.join(pseudo, "materials", "*.pdf"))):
         base = os.path.basename(f)
         for short in route(base):                                # C 真(可扇出)
             fs = full_sheet(names, short)
             if not fs:
                 continue
-            sp = {"sheet": fs, "pdf": f, "short": short, "W": 56, "H": 42}
             if short == "材质表":
-                sp["mat_idx"] = content_match(f, flat)           # 内容驱动 真
-                sp["col"] = ev_col(base)
-                mt_specs.append(sp)
-            specs.append(sp)
+                mi, col = content_match(f, flat), ev_col(base)   # 内容驱动 真
+                if mi is not None and (mi, col) in seen_mt:      # 同(料,证据列)只留一份
+                    continue
+                seen_mt.add((mi, col))
+                sp = {"sheet": fs, "pdf": f, "short": short, "mat_idx": mi, "col": col, "W": 56, "H": 42}
+                mt_specs.append(sp); specs.append(sp)
+            elif short == "材质证明":
+                mi = content_match(f, flat)
+                if mi is not None and mi in seen_cert:           # 一材一证
+                    continue
+                seen_cert.add(mi)
+                specs.append({"sheet": fs, "pdf": f, "short": short, "W": 56, "H": 42})
+            else:
+                specs.append({"sheet": fs, "pdf": f, "short": short, "W": 56, "H": 42})
     specs.append({"sheet": full_sheet(names, "图纸"), "pdf": draw_pdf, "short": "图纸", "W": 320, "H": 220})
     for s in specs:
         s["icon"] = make_icon(s["pdf"], os.path.join(outdir, "icons", os.path.basename(s["pdf"]) + ".png"))
