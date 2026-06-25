@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import openpyxl
 from hitl.build import build_upto
 from hitl.ole_assemble import make_icon, embed_many, count_ole
+from hitl.material_table import material_ole_anchors, MAT_SHEET
 from hitl import sample_photo
 from study.case_data import extract_case, to_inject_bom, extract_drawing_meta, extract_dimensions
 from study.golden_parse import parse_golden
@@ -53,13 +54,17 @@ def _set(ws, r, c, v):
         pass
 
 
-def write_matcert_labels(wb, labels):
-    ws = [wb[s] for s in wb.sheetnames if "材质证明" in s][0]
-    for r, txt in labels:
-        _set(ws, r, 2, txt)
+def write_ole_labels(wb, ole_labels):
+    """所有 OLE 表 BOM 物料标签写回(case-specific)。"""
+    for sheet, labs in ole_labels.items():
+        ws = wb[sheet] if sheet in wb.sheetnames else None
+        if ws is None:
+            continue
+        for r, c, txt in labs:
+            _set(ws, r, c, txt)
 
 
-def build_scaffold(cell_xlsx, scaffold_xlsx, labels):
+def build_scaffold(cell_xlsx, scaffold_xlsx, ole_labels):
     """图纸特异性空白：结构(行/零件/材质/标签/FAI行)在, 动态数据清空。"""
     wb = openpyxl.load_workbook(cell_xlsx)
     mat = _msheet(wb)
@@ -74,7 +79,7 @@ def build_scaffold(cell_xlsx, scaffold_xlsx, labels):
         for r in range(9, 40):
             for c in (2, 3, 4):
                 _set(fws[0], r, c, None)
-    write_matcert_labels(wb, labels)
+    write_ole_labels(wb, ole_labels)
     wb.save(scaffold_xlsx)
 
 
@@ -96,21 +101,27 @@ def run_case(golden):
     scaffold = os.path.join(folder, "2_图纸特异性空白模板.xlsx")
     final = os.path.join(folder, "3_封装承认书.xlsx")
 
-    # 段一: cells + 材质证明标签 + 照片
+    # 段一: cells + 所有OLE表标签(case-specific) + 照片
     build_upto(BLANK, cell, data, upto=4, highlight=False)
-    build_scaffold(cell, scaffold, cd["matcert_labels"])     # 图纸特异性空白(数据清前先存结构)
+    build_scaffold(cell, scaffold, cd["ole_labels"])         # 图纸特异性空白(数据清前先存结构)
     wb = openpyxl.load_workbook(cell)
-    write_matcert_labels(wb, cd["matcert_labels"])
+    write_ole_labels(wb, cd["ole_labels"])
     sample_photo.fill_sample_photo(wb[PHOTO], cd["photos"])
     wb.save(cell)
 
-    # 段二: 装全 OLE(golden 位置忠实复现)
+    # 段二: 材质表OLE→单元格定位(嵌入到格对齐); 其余→golden位置
+    mt_specs = [s for s in cd["ole_map"] if s["sheet"].strip() == MAT_SHEET.strip()]
+    mt_map = {id(s): a for s, a in zip(mt_specs, material_ole_anchors(cd["bom"], mt_specs))}
     specs = []
     for s in cd["ole_map"]:
         icon = s["pdf"] + ".png"
         make_icon(s["pdf"], icon)
-        specs.append({"sheet": s["sheet"], "pdf": s["pdf"], "icon": icon,
-                      "L": s["L"], "T": s["T"], "W": s["W"], "H": s["H"]})
+        spec = {"sheet": s["sheet"], "pdf": s["pdf"], "icon": icon, "W": s["W"], "H": s["H"]}
+        if id(s) in mt_map:
+            spec["row"], spec["col"] = mt_map[id(s)]      # 材质表: 块首行×K/L/Y 单元格
+        else:
+            spec["L"], spec["T"] = s["L"], s["T"]
+        specs.append(spec)
     embed_many(cell, final, specs)
 
     # 对标 golden

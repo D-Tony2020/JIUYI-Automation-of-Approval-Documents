@@ -110,15 +110,26 @@ def extract_ole_map(golden, out_dir):
     return manifest
 
 
-def extract_matcert_labels(golden):
-    """材质证明书 零件标签 [(row, text)]（每案不同, 写回通用模板用）。"""
+_LABEL_HEADER = ("生久", "http", "承认书", "证明书", "测试报告", "报告", "适用",
+                 "REACH", "MSDS", "Reach")
+
+
+def extract_ole_labels(golden):
+    """所有 OLE 嵌入组表的 BOM 物料标签 {sheet名: [(row, col, text)]}（每案不同, 写回通用模板）。"""
     wb = openpyxl.load_workbook(golden, data_only=True)
-    ws = [wb[s] for s in wb.sheetnames if "材质证明" in s][0]
-    out = []
-    for r in range(11, 24):
-        v = ws.cell(r, 2).value
-        if v and not any(k in str(v) for k in ["生久", "http", "证明书"]):
-            out.append((r, str(v).strip()))
+    out = {}
+    for s in wb.sheetnames:
+        if not any(k in s for k in ("部件", "信赖", "材质证明", "UL", "ul")):
+            continue
+        ws = wb[s]
+        labs = []
+        for r in range(11, 26):
+            for c in (2, 3):
+                v = ws.cell(r, c).value
+                if v and not any(k in str(v) for k in _LABEL_HEADER):
+                    labs.append((r, c, str(v).strip()))
+        if labs:
+            out[s] = labs
     return out
 
 
@@ -187,7 +198,7 @@ def extract_case(golden, root_out):
         "parts": order,
         "ole_map": extract_ole_map(golden, os.path.join(d, "ole")),
         "photos": extract_photos(golden, os.path.join(d, "photos")),
-        "matcert_labels": extract_matcert_labels(golden),
+        "ole_labels": extract_ole_labels(golden),
     }
 
 
