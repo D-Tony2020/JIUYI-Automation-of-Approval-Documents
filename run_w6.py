@@ -17,7 +17,8 @@ from hitl.build import build_upto
 from hitl.harness import assert_no_external_links
 from hitl.ole_assemble import make_icon, embed_many, count_ole, verify_open
 from hitl.material_table import material_ole_anchors, MAT_SHEET
-from collections import Counter
+from study.embed_structure import count_from_bom, grid_anchors, GRID, SHEET_SHORT
+from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 TPL = os.path.join(ROOT, "模板", "承认书空白模板_治病.xlsx")
@@ -40,17 +41,37 @@ def main():
     os.makedirs(ICON_DIR, exist_ok=True)
     specs = json.load(open(MANIFEST, encoding="utf-8"))
 
-    # ⭐材质表 OLE 位置由结构推导(compute_layout 块首行 + K/L/Y 列), 非套 golden 绝对位置
+    # ⭐材质表 OLE: 结构驱动(compute_layout 块首行 × K/L/Y 单元格定位)
     mt_specs = [s for s in specs if s["sheet"].strip() == MAT_SHEET.strip()]
     mt_anchors = material_ole_anchors(DATA["bom"], mt_specs)
-    ai = 0
-    for spec in specs:
-        if spec["sheet"].strip() == MAT_SHEET.strip():
-            spec["row"], spec["col"] = mt_anchors[ai]   # 材质表: 结构驱动(单元格定位)
-            ai += 1
-        else:
-            spec.pop("row", None)                        # 其他表: 用 golden 绝对 L/T
+    for spec, (r, c) in zip(mt_specs, mt_anchors):
+        spec["row"], spec["col"] = r, c
+
+    # ⭐嵌入组表 OLE: 结构驱动(槽位数 from BOM + 网格布局), 非套 golden 绝对坐标
+    counts = count_from_bom(DATA["bom"])
+    by_sheet = defaultdict(list)
+    for s in specs:
+        by_sheet[s["sheet"].strip()].append(s)
+    struct_info = []
+    for full, short in SHEET_SHORT.items():
+        grp = by_sheet.get(full, [])
+        if not grp:
+            continue
+        n = counts.get(short, len(grp))
+        g = GRID[short]
+        for spec, (L, T) in zip(grp, grid_anchors(len(grp), **g)):
+            spec["L"], spec["T"], spec["W"], spec["H"] = L, T, g["w"], g["h"]
+            spec.pop("row", None)
             spec.pop("col", None)
+        struct_info.append(f"{short}={len(grp)}(BOM算{n})")
+
+    # 其余表(图纸/包装/出货): 1 槽 golden 绝对
+    handled = {MAT_SHEET.strip()} | set(SHEET_SHORT.keys())
+    for s in specs:
+        if s["sheet"].strip() not in handled:
+            s.pop("row", None)
+            s.pop("col", None)
+    print("嵌入组结构驱动:", "  ".join(struct_info))
 
     # 预览图标(每个源 PDF 首页渲染) + 检测空/损坏源
     import fitz
