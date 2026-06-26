@@ -2,7 +2,7 @@
 import * as api from "./api.js";
 import { planTree, slotState, filetreeMissing, COLS } from "./treestate.js";
 
-const S = { job: null, bom: { materials: [], unlinked_files: [] }, drag: null };
+const S = { job: null, bom: { materials: [], unlinked_files: [] }, partOrder: [], drag: null };
 const $ = (id) => document.getElementById(id);
 let saveTimer = null;
 
@@ -13,6 +13,7 @@ async function boot() {
   const job = new URLSearchParams(location.search).get("job");
   if (!job) { $("workspace").innerHTML = "<p class='tip'>缺 job 参数(?job=…)</p>"; return; }
   S.job = job;
+  try { S.partOrder = (await api.getDict()).part_order || []; } catch { /* 默认空 */ }   // 继承③零件顺序
   try {
     const s = await api.filetreeState(job);
     S.bom = { materials: s.materials || [], unlinked_files: s.unlinked_files || [] };
@@ -23,7 +24,7 @@ async function boot() {
 }
 
 function render() {
-  const tree = planTree(S.bom);
+  const tree = planTree(S.bom, S.partOrder);
   let html = "";
   for (const p of tree.order) {
     html += `<div class="part-group"><div class="part-head">▸ ${esc(p)} <small>${tree.parts[p].length}材质</small></div>`;

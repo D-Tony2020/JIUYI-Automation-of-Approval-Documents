@@ -10,7 +10,7 @@ import fitz
 import requests
 
 URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
-MODEL = "qwen-vl-max"
+MODEL = "qwen3.7-plus"   # 全局统一(实证: vs qwen-vl-max 更快8s/11s + 品号读对 YY 非 YV)
 
 PROMPT = """你是工程图纸尺寸抽取专家。附图是生久公司的产品工程图纸(导线/连接器类),可能含改版履历页+几何主图页。
 
@@ -40,6 +40,8 @@ def _call(images, api_key):
         content.append({"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}})
     body = {"model": MODEL, "messages": [{"role": "user", "content": content}],
             "temperature": 0, "max_tokens": 1500}
+    if "qwen3" in MODEL:
+        body["enable_thinking"] = False         # 结构化抽取关思考(快+JSON干净)
     s = requests.Session(); s.trust_env = False        # 绕 Clash 代理劫持国内API
     r = s.post(URL, headers={"Authorization": f"Bearer {api_key}",
                              "Content-Type": "application/json"}, json=body, timeout=180)

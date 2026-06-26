@@ -42,17 +42,24 @@ export function filetreeMissing(stage2_bom) {
   return out;
 }
 
-export function planTree(stage2_bom) {
+export function planTree(stage2_bom, partOrder) {
   // → {materials:[{idx,材质,零件,豁免,slots:{K:[],L:[],Y:[]}}], unlinked:[{文件,类型}], parts:{零件:[idx]}}
+  // partOrder: 继承③BOM脊柱拖动持久化的零件顺序(否则文件树分组不跟③); 豁免材质不进文件树(同装表)。
   const mats = (stage2_bom && stage2_bom.materials) || [];
   const parts = {}, order = [];
-  const materials = mats.map((m, i) => {
+  const materials = [];
+  mats.forEach((m, i) => {
+    if (m.豁免) return;                                   // 豁免(重复/特殊)不进文件树, 与装表一致
     const p = (m.零件 || "").trim() || "(未归零件)";
     if (!parts[p]) { parts[p] = []; order.push(p); }
     parts[p].push(i);
     const slots = {};
     for (const col of COLS) slots[col.key] = filesOfCol(m, col);
-    return { idx: i, 材质: m.材质 || `材质${i + 1}`, 零件: m.零件 || "", 豁免: !!m.豁免, slots };
+    materials.push({ idx: i, 材质: m.材质 || `材质${i + 1}`, 零件: m.零件 || "", 豁免: false, slots });
   });
+  if (partOrder && partOrder.length) {                   // 按持久化零件顺序排(继承③拖序)
+    const ix = {}; partOrder.forEach((p, k) => (ix[p] = k));
+    order.sort((a, b) => (ix[a] == null ? partOrder.length : ix[a]) - (ix[b] == null ? partOrder.length : ix[b]));
+  }
   return { materials, parts, order, unlinked: (stage2_bom && stage2_bom.unlinked_files) || [] };
 }

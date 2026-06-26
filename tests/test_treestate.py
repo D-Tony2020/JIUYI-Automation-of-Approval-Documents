@@ -37,6 +37,18 @@ def test_planTree分组与槽():
     assert r["pvcK"] == 1 and r["dxtL"] == 1 and r["unl"] == 1
 
 
+def test_planTree豁免不进树():
+    b = "{materials:[{材质:'PVC',零件:'导线',files:{MSDS:'a.pdf'}},{材质:'重复',零件:'导线',豁免:true,files:{}}]}"
+    r = _node(f"const t=m.planTree({b});console.log(JSON.stringify({{n:t.materials.length,名:t.materials.map(x=>x.材质)}}));")
+    assert r["n"] == 1 and r["名"] == ["PVC"]
+
+
+def test_planTree继承零件顺序():
+    b = "{materials:[{材质:'锡',零件:'锡',files:{MSDS:'a.pdf'}},{材质:'PVC',零件:'导线',files:{MSDS:'b.pdf'}}]}"
+    r = _node(f"const t=m.planTree({b},['导线','锡']);console.log(JSON.stringify(t.order));")
+    assert r == ["导线", "锡"]                # 继承③拖序(非首现序 锡,导线)
+
+
 def test_slotState():
     r = _node("const COLS=(await import('./app/web/js/treestate.js')).COLS;"
               "const K=COLS[0],Y=COLS[2];"
