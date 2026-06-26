@@ -42,6 +42,17 @@ def test_豁免材质不进装表():
     assert len(ordered) == 2                                  # ordered 同步排除(mat_idx 不错位)
 
 
+def test_拖动改材质归属传递装表():
+    # 模拟③把"镀锡铜"从导线拖到端子(moveMatToPart 改 零件) → 装表分组须跟随
+    mats = [{"零件": "导线", "材质": "PVC", "files": {}},
+            {"零件": "导线", "材质": "镀锡铜", "files": {}}]
+    mats[1]["零件"] = "端子"                                  # 拖动后的状态
+    nested, ordered = stage2_to_nested_bom(mats, part_order=["导线", "端子"])
+    名 = {p["零件"]: [m["材质"] for m in p["materials"]] for p in nested}
+    assert 名 == {"导线": ["PVC"], "端子": ["镀锡铜"]}        # 镀锡铜归属变端子, 材质表/OLE 跟随
+    assert [m["材质"] for m in ordered] == ["PVC", "镀锡铜"]  # ordered 同序(mat_idx 对齐不错位)
+
+
 def test_part_order_显式排序():
     mats = [{"零件": "锡", "材质": "锡", "files": {}}, {"零件": "导线", "材质": "PVC", "files": {}}]
     nested, ordered = stage2_to_nested_bom(mats, part_order=["导线", "锡"])

@@ -84,14 +84,14 @@ function render() {
   const dupOf = {}; dups.forEach((g, k) => g.forEach((i) => (dupOf[i] = k)));
   let html = "";
   if (unclaimed.length) {
-    html += `<div class="unclaimed"><div class="part-head warn">⚠ 待认领零件 ${unclaimed.length} 件（改材质名自动归零件；改不出则手选）</div>`
+    html += `<div class="unclaimed" data-partdrop=""><div class="part-head warn">⚠ 待认领零件 ${unclaimed.length} 件（改材质名自动归零件；改不出则手选；拖材质到此=移出零件）</div>`
       + unclaimed.filter(passFilter).map((i) => card(i, dupOf)).join("") + `</div>`;
   }
   if (S.view.group) {
     for (const p of orderParts(order)) {
       const idxs = grp[p].filter(passFilter);
       const sup = supplierOf(p);
-      html += `<div class="part-group"><div class="part-head" draggable="true" data-pgdrag="${esc(p)}" title="拖动调零件顺序(持久化)">`
+      html += `<div class="part-group" data-partdrop="${esc(p)}"><div class="part-head" draggable="true" data-pgdrag="${esc(p)}" title="拖动调零件顺序(持久化)">`
         + `<span class="draghandle">⠿</span> ▸ ${esc(p)} <small>${grp[p].length}件</small>`
         + ` · 供应商 <input class="inp psup" list="suplist" data-psup="${esc(p)}" value="${esc(sup)}" placeholder="零件级手填">`
         + `</div>` + idxs.map((i) => card(i, dupOf)).join("") + `</div>`;
@@ -135,6 +135,7 @@ function card(i, dupOf) {
     ${m.手补 ? '<div class="manual-tag">手动补 · 无MSDS</div>' : ""}
     ${dupOf[i] !== undefined ? '<div class="dup-tag">⚠ 同名材质重复?<button data-merge="' + dupOf[i] + '">合并</button> <button data-keepdup="' + dupOf[i] + '">都保留</button></div>' : ""}
     <div class="mat-row">
+      <span class="matdraghandle" draggable="true" data-matdrag="${i}" title="拖到别的零件组即改归属(传递到装表)">⠿</span>
       ${verifyBtn(i, m, open)}
       <input type="checkbox" data-sel="${i}">
       <input class="inp matname-in" data-mat="${i}" value="${esc(m.材质)}" title="原文:${esc(m.材质原文) || "—"} · 改为标准名→自动出类别/零件" placeholder="材质(标准名)">
@@ -200,10 +201,22 @@ function bind() {
   document.querySelectorAll("[data-cat]").forEach((el) => el.onchange = () => { S.materials[+el.dataset.cat].材质类别 = el.value; save(); render(); });
   document.querySelectorAll("[data-psup]").forEach((el) => el.onchange = () => setPartSupplier(el.dataset.psup, el.value));
   document.querySelectorAll(".part-head[draggable]").forEach((el) => {
-    el.addEventListener("dragstart", (e) => { S.pgDrag = el.dataset.pgdrag; e.dataTransfer.effectAllowed = "move"; });
-    el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("pg-over"); });
+    el.addEventListener("dragstart", (e) => { S.pgDrag = el.dataset.pgdrag; S.matDrag = null; e.dataTransfer.effectAllowed = "move"; });
+    el.addEventListener("dragover", (e) => { if (S.pgDrag != null) { e.preventDefault(); el.classList.add("pg-over"); } });
     el.addEventListener("dragleave", () => el.classList.remove("pg-over"));
-    el.addEventListener("drop", (e) => { e.preventDefault(); el.classList.remove("pg-over"); reorderParts(S.pgDrag, el.dataset.pgdrag); });
+    el.addEventListener("drop", (e) => { if (S.pgDrag == null) return; e.preventDefault(); e.stopPropagation(); el.classList.remove("pg-over"); reorderParts(S.pgDrag, el.dataset.pgdrag); });
+  });
+  document.querySelectorAll("[data-matdrag]").forEach((el) => {
+    el.addEventListener("dragstart", (e) => { e.stopPropagation(); S.matDrag = +el.dataset.matdrag; S.pgDrag = null; e.dataTransfer.effectAllowed = "move"; });
+  });
+  document.querySelectorAll("[data-partdrop]").forEach((el) => {           // 材质拖到别的零件组→改归属(传递到装表)
+    el.addEventListener("dragover", (e) => { if (S.matDrag != null) { e.preventDefault(); el.classList.add("matdrop-over"); } });
+    el.addEventListener("dragleave", () => el.classList.remove("matdrop-over"));
+    el.addEventListener("drop", (e) => {
+      if (S.matDrag == null) return;
+      e.preventDefault(); e.stopPropagation(); el.classList.remove("matdrop-over");
+      moveMatToPart(S.matDrag, el.dataset.partdrop); S.matDrag = null;
+    });
   });
   document.querySelectorAll("[data-verify]").forEach((el) => el.onclick = () => onVerify(+el.dataset.verify));
   document.querySelectorAll("[data-exempt]").forEach((el) => el.onclick = () => toggleExempt(+el.dataset.exempt));
@@ -236,6 +249,15 @@ function setMat(i, val) {                    // 改材质名→反查字典自�
 function setPart(i, val) {
   if (val === "__new__") { const p = prompt("新建零件名（导线/胶座端子/热缩管/锡…）:"); if (!p) { render(); return; } S.materials[i].零件 = p.trim(); }
   else S.materials[i].零件 = val;
+  save(); render();
+}
+
+function moveMatToPart(i, p) {                // 拖动改材质归属: 改零件→传递到装表(stage2_to_nested_bom按零件分组+材质表/OLE跟随)
+  const m = S.materials[i];
+  if (!m) return;
+  const tgt = (p || "").trim();
+  if ((m.零件 || "").trim() === tgt) return;  // 原地不动
+  m.零件 = tgt;                               // 空=移出零件→待认领; 类别(材质级)不变, 由操作员按需调
   save(); render();
 }
 

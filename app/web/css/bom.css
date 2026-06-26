@@ -67,3 +67,8 @@ table.comp tr.nocas input.cmp { color: #b45309; }
 .part-head .draghandle { cursor: grab; color: #9ca3af; padding: 0 4px; user-select: none; }
 .part-head .draghandle:active { cursor: grabbing; }
 .part-head.pg-over { background: #dbeafe; box-shadow: 0 -2px 0 #0284c7 inset; }
+
+/* 材质卡拖动改归属(从零件A拖到零件B) */
+.matdraghandle { cursor: grab; color: #9ca3af; font-size: 13px; user-select: none; padding: 0 2px; }
+.matdraghandle:active { cursor: grabbing; }
+.part-group.matdrop-over, .unclaimed.matdrop-over { background: #ecfdf5; box-shadow: 0 0 0 2px #16a34a inset; border-radius: 6px; }
