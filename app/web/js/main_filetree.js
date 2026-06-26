@@ -145,8 +145,10 @@ async function onConfirm() {
   try {
     await api.filetreeConfirm(S.job, S.bom);
     setBusy("");
-    $("summary").textContent = "✅ 文件树已确认，进入第5步（照片）";
+    const next = "index_export.html?job=" + encodeURIComponent(S.job);
+    $("summary").innerHTML = `✅ 文件树已确认 · <a href="${next}">进入 ⑤照片+导出 →</a>`;
     $("gatebtn").disabled = true;
+    setTimeout(() => { location.href = next; }, 900);
   } catch (e) { setBusy(""); alert("放行被拦：" + e.message); }
 }
 

@@ -23,6 +23,7 @@ async function onUpload(e) {
   setBusy("上传中…");
   const up = await api.uploadDrawing(f);
   S.job = up.job_id; S.pages = up.pages;
+  history.replaceState(null, "", "?job=" + encodeURIComponent(S.job));   // job 写URL, 跨页带得走
   setBusy("qwen-vl 读图中(首次约 10–20 秒)…");
   S.data = await api.extract(S.job);
   await afterExtract();
@@ -150,8 +151,10 @@ function markCard(key, st) { const c = document.querySelector(`.card[data-key="$
 async function onConfirm() {
   setBusy("提交确认…");
   await api.confirm(S.job, { 品号: S.data.品号, 版本: S.data.版本, 名称: S.data.名称, dimensions: S.data.dimensions, exemptions: S.data.exemptions, checked: S.data.checked });
-  $("summary").textContent = "✅ 已确认通过, 进入第2步(文件树确认环②)";
+  const next = "index_bom.html?job=" + encodeURIComponent(S.job);
+  $("summary").innerHTML = `✅ 已确认通过 · <a href="${next}">进入 ③BOM脊柱 →</a>`;
   $("gatebtn").disabled = true;
+  setTimeout(() => { location.href = next; }, 900);
 }
 
 function setBusy(t) { $("busy").textContent = t; $("busy").style.display = t ? "block" : "none"; }

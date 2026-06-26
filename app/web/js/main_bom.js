@@ -307,7 +307,9 @@ async function onConfirm() {
     await api.learnDict(dictLearnPayload()).catch(() => {});      // 回写字典记忆
     S.dicts = await api.getDict().catch(() => S.dicts);
     await api.bomConfirm(S.job, { materials: S.materials });
-    $("summary").textContent = "✅ BOM脊柱已确认，进入第4步（文件树确认环②）"; $("gatebtn").disabled = true;
+    const next = "index_filetree.html?job=" + encodeURIComponent(S.job);
+    $("summary").innerHTML = `✅ BOM脊柱已确认 · <a href="${next}">进入 ④文件树 →</a>`; $("gatebtn").disabled = true;
+    setTimeout(() => { location.href = next; }, 900);
   } catch (e) { setBusy(""); alert("放行被拦：" + e.message); }
 }
 
