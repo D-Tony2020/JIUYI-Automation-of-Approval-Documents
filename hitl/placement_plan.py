@@ -126,10 +126,11 @@ def material_specs(stage2_bom, materials_dir):
     return specs, nested, ordered
 
 
-def pile_specs(materials_dir, sheet_names, drawing_pdf=None):
+def pile_specs(materials_dir, sheet_names, drawing_pdf=None, materials=None, part_order=None):
     """非材质级表(部件承认/UL/信赖性/包装/出货/图纸)specs: 按 route() 重路由料堆, GRID/固定位落。
 
     这些文件不在 file_link 材质链里(link 只管材质表/材质证明), 故从料堆按文件名关键词路由。
+    横排表(部件承认/UL/信赖性)按零件顺序排(每报告推断零件→part_order序), 而非文件名字母序(原乱序根因)。
     """
     by_short = {k: [] for k in ("部件承认", "UL", "信赖性", "包装", "出货")}
     for f in sorted(glob.glob(os.path.join(materials_dir, "*.pdf"))):
@@ -140,10 +141,21 @@ def pile_specs(materials_dir, sheet_names, drawing_pdf=None):
                 if fs:
                     by_short[short].append({"sheet": fs, "pdf": f, "short": short,
                                             "label": os.path.splitext(base)[0]})   # 标签=文件名核心(部件/零件名)
+    pidx = {p: i for i, p in enumerate(part_order or [])}                          # 零件→序
+    def _part_rank(sp):                                                            # 报告推断零件(复用file_link匹配)→序; 推不出留尾
+        if not materials:
+            return len(pidx) + 1
+        try:
+            from hitl.file_link import suggest_for
+            sug = suggest_for(os.path.basename(sp["pdf"]), "其他", materials)
+            return pidx.get((sug or {}).get("零件", ""), len(pidx) + 1)
+        except Exception:
+            return len(pidx) + 1
     specs = []
     for short, gk in (("部件承认", "部件承认书"), ("UL", "UL证明"), ("信赖性", "信赖性")):
         g = GRID[gk]
-        for sp, (L, T) in zip(by_short[short], grid_anchors(len(by_short[short]), **g)):
+        ordered_reports = sorted(by_short[short], key=_part_rank)                  # 稳定排序: 同零件保文件名序
+        for sp, (L, T) in zip(ordered_reports, grid_anchors(len(ordered_reports), **g)):
             sp.update(L=L, T=T, W=g["w"], H=g["h"])
             specs.append(sp)
     for short in ("包装", "出货"):
@@ -164,7 +176,9 @@ def build_specs(stage2_bom, sheet_names, materials_dir, drawing_pdf=None):
     """全部 OLE specs(材质表+材质证明 由链驱动, 其余按 route 路由)。不生 icon(留装配时)。"""
     s2 = dict(stage2_bom, _sheet_names=sheet_names)
     specs, nested, ordered = material_specs(s2, materials_dir)
-    specs += pile_specs(materials_dir, sheet_names, drawing_pdf)
+    part_order = [p["零件"] for p in nested]                       # 装表零件序(横排pile跟随, 与材质表同序)
+    specs += pile_specs(materials_dir, sheet_names, drawing_pdf,
+                        materials=stage2_bom.get("materials", []), part_order=part_order)
     return specs, nested, ordered
 
 

@@ -189,34 +189,93 @@ def propose_bom_from_pile(materials_dir, provider=PROVIDER, model=MODEL):
     return props
 
 
-def enrich_rohs(materials, materials_dir, provider=PROVIDER, model=MODEL):
-    """给已链 RoHS 报告的材质, B 读报告抽 10 项 RoHS 值填进 material['RoHS'](+报告号/日期)。
+# RoHS 有害物质名 → 材质表 M-V 列 key。顺序敏感: PBDE 在 PBB 前(避免 'pbb' 误匹 'pbde' 不会, 但保险);
+# 注意只在"无CAS行"上匹配(有CAS的铅/汞是真合金成分, 非RoHS声明)。
+_ROHS_SUBSTANCE = [
+    (("pbde", "多溴二苯醚", "二苯醚"), "PBDEs"),
+    (("pbb", "多溴联苯", "联苯"), "PBBs"),
+    (("dehp",), "DEHP"), (("dibp",), "DIBP"), (("bbp",), "BBP"), (("dbp",), "DBP"),
+    (("六价", "六價", "cr6", "cr(vi)", "cr六", "hexavalent"), "Cr6+"),
+    (("镉", "鎘", "(cd)", "cd)", "cadmium"), "Cd"),
+    (("铅", "鉛", "(pb)", "pb)", "lead"), "Pb"),
+    (("汞", "(hg)", "hg)", "mercury"), "Hg"),
+]
 
-    材质表 RoHS 列(M-V)的值来自第三方 RoHS 检测报告(非 MSDS)。file_link 已把 RoHS 报告配到材质,
-    本函数对每材质的 files.RoHS[0] 跑 extract_rohs(缓存) → 归一填值。原地改 materials 并返回。
-    无 RoHS 报告的材质不动(留空, 导出预检会软警)。
+
+def _rohs_key(name):
+    n = str(name or "").lower().replace(" ", "")
+    for kws, key in _ROHS_SUBSTANCE:
+        if any(k.replace(" ", "") in n for k in kws):
+            return key
+    return None
+
+
+def _rohs_val(raw):
+    """RoHS 声明值清洗: 〈/＜→<; ND/未检出→ND; 空→ND。"""
+    s = str(raw or "").strip().replace("〈", "<").replace("＜", "<").replace(" ", "")
+    if not s or s.upper() in ("ND", "N.D.", "未检出", "未檢出", "/", "-"):
+        return "ND"
+    return s
+
+
+def rohs_from_msds_components(components):
+    """无第三方 RoHS 报告时, 从材质 MSDS 自带的 RoHS 符合性声明行(无CAS的有害物质行)派生 RoHS dict。
+
+    PVC MSDS 末尾常附 RoHS 声明表(鎘〈5ppm/鉛〈50ppm/PBB ND...), 被当成分过抽; 这里把它正用为 M-V 填充。
+    只取无CAS行(有CAS=真成分, 如磷青铜的铅 CAS 7439-92-1)。
+    """
+    out = {}
+    for c in components or []:
+        cas = str(c.get("cas") or c.get("CAS") or "").strip()
+        if cas and cas not in ("/", "-"):
+            continue
+        k = _rohs_key(c.get("name") or c.get("成份名称") or "")
+        if k and k not in out:
+            out[k] = _rohs_val(c.get("weight_pct_raw") or c.get("重量%") or "")
+    return out
+
+
+def enrich_rohs(materials, materials_dir, provider=PROVIDER, model=MODEL):
+    """给材质填 10 项 RoHS 值(材质表 M-V 列)。原地改 materials 并返回。
+
+    三级填充(老板拍板): ① 第三方 RoHS 报告(最权威) > ② 该材质 MSDS 自带 RoHS 符合性声明 > ③ ND(保证 M-V 不空白)。
+    豁免材质不进材质表, 跳过。
     """
     from hitl.material_table import ROHS_KEYS, normalize_date, normalize_rohs
     for m in materials:
+        if m.get("豁免"):
+            continue
+        filled = {}
         fz = m.get("files") or {}
         rf = fz.get("RoHS") or []
         rf = [rf] if isinstance(rf, str) else rf
         rpdf = os.path.join(materials_dir, rf[0]) if rf else None
-        if not rpdf or not os.path.exists(rpdf):
-            continue
-        try:
-            txt, _ = pdf_text_for_llm(rpdf)
-            r = _cached_extract(txt, "rohs", provider, model)
-        except Exception:
-            continue
-        rin = r.get("rohs", {}) if isinstance(r, dict) else {}
-        out = {}
-        for k in ROHS_KEYS:
-            cell = rin.get(k, "")
-            out[k] = normalize_rohs(cell.get("result", "") if isinstance(cell, dict) else cell)
-        if any(out.values()):
-            m["RoHS"] = out
-            if isinstance(r, dict):                       # 报告号/日期也从 RoHS 报告补(溯源用)
-                m["报告编号"] = m.get("报告编号") or (r.get("report_number") or "").strip()
-                m["报告日期"] = m.get("报告日期") or normalize_date(r.get("report_date_raw", ""))
+        if rpdf and os.path.exists(rpdf):                 # ① 第三方报告
+            try:
+                txt, _ = pdf_text_for_llm(rpdf)
+                r = _cached_extract(txt, "rohs", provider, model)
+                rin = r.get("rohs", {}) if isinstance(r, dict) else {}
+                for k in ROHS_KEYS:
+                    cell = rin.get(k, "")
+                    v = normalize_rohs(cell.get("result", "") if isinstance(cell, dict) else cell)
+                    if v:
+                        filled[k] = v
+                if filled and isinstance(r, dict):
+                    m["报告编号"] = m.get("报告编号") or (r.get("report_number") or "").strip()
+                    m["报告日期"] = m.get("报告日期") or normalize_date(r.get("report_date_raw", ""))
+            except Exception:
+                pass
+        if len(filled) < len(ROHS_KEYS):                  # ② MSDS 自带 RoHS 声明(无报告或报告缺项)
+            src = (m.get("源文件") or "").strip()
+            mp = os.path.join(materials_dir, src) if src else None
+            if mp and os.path.exists(mp):
+                try:
+                    mtxt, _ = pdf_text_for_llm(mp)
+                    msds = _cached_extract(mtxt, "msds", provider, model)
+                    for k, v in rohs_from_msds_components(msds.get("components", [])).items():
+                        filled.setdefault(k, v)
+                except Exception:
+                    pass
+        cur = m.get("RoHS") or {}                         # ③ 仍空→ND(无声明的材质如磷青铜全ND)
+        m["RoHS"] = {k: (filled.get(k) or cur.get(k) or "ND") for k in ROHS_KEYS}
     return materials

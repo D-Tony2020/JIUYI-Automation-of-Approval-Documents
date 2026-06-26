@@ -8,6 +8,8 @@ plan_only 不碰 COM(可单测/dry-run); assemble 走 COM(WPS), 慢且依赖装�
 """
 import datetime
 import os
+import re
+import shutil
 
 import openpyxl
 
@@ -65,8 +67,17 @@ def assemble(stage2_bom, drawing_meta, dimensions, materials_dir, drawing_pdf, o
     icondir = os.path.join(outdir, "icons")
     os.makedirs(icondir, exist_ok=True)
     for k, s in enumerate(specs):       # 序号前缀: 同 pdf 多 spec(不同标签)各生独立图标, 防覆盖→标签↔pdf一一对齐
+        label = (s.get("label") or "").strip()
+        if label:                        # OLE 标题=嵌入文件名(实测WPS忽略IconLabel)→嵌入"重命名副本"使标题=料名/零件名
+            safe = re.sub(r'[\\/:*?"<>|\r\n]', "_", label).strip()[:42] or f"OLE{k}"
+            sub = os.path.join(icondir, f"e{k:03d}"); os.makedirs(sub, exist_ok=True)
+            dst = os.path.join(sub, safe + ".pdf")
+            try:
+                shutil.copyfile(s["pdf"], dst); s["pdf"] = dst
+            except Exception:
+                pass
         s["icon"] = make_icon(s["pdf"], os.path.join(icondir, f"{k:03d}_{os.path.basename(s['pdf'])}.png"),
-                              label=s.get("label"))
+                              label=label or None)
     if os.path.exists(out_xlsx):
         os.remove(out_xlsx)
     embed_many(cell, out_xlsx, specs)
