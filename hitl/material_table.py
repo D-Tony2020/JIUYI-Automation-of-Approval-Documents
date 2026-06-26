@@ -253,9 +253,11 @@ def inject_data(ws, bom, start_row=DATA_TOP):
         for M in P["materials"]:
             for B in M["blocks"]:
                 block, bf, be = B["block"], B["first"], B["last"]
+                材 = M["material"].get("材质", "")
                 for j, comp in enumerate(block.get("成份", [])):
                     rr = bf + j
-                    ws.cell(rr, 7, comp.get("成份名称", ""))
+                    # G列成份名: 按(材质,CAS)查词表→承认书标准短名(B原文/MSDS全称→标准, 查不到留原文)
+                    ws.cell(rr, 7, normalize_component_name(材, comp.get("CAS", ""), comp.get("成份名称", "")))
                     ws.cell(rr, 8, comp.get("CAS", ""))
                     ws.cell(rr, 10, comp.get("重量%", ""))
                 for k in ROHS_KEYS:
