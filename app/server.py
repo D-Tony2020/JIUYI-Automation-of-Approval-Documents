@@ -307,4 +307,26 @@ def export_download(job: str):
                         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
+# ── 全局字典(材质简称/类别零件反查/供应商历史) ──────────────
+@app.get("/api/dict")
+def get_dict():
+    """BOM 页一次拉全: {alias, catpart, suppliers}。"""
+    from hitl import dicts
+    return dicts.all_dicts()
+
+
+@app.post("/api/dict/learn")
+async def learn_dict(request: Request):
+    """操作员改材质名/类别/零件/供应商 → 回写学习(全局持久化)。返回更新后全字典。"""
+    from hitl import dicts
+    body = await request.json()
+    for e in body.get("alias", []):
+        dicts.learn_alias(e.get("原文"), e.get("std"))
+    for e in body.get("catpart", []):
+        dicts.learn_catpart(e.get("std"), e.get("材质类别"), e.get("零件"))
+    for s in body.get("suppliers", []):
+        dicts.add_supplier(s)
+    return dicts.all_dicts()
+
+
 app.mount("/", StaticFiles(directory=WEB, html=True), name="web")   # 前端静态, 必须最后挂

@@ -114,3 +114,14 @@ export function downloadUrl(job) {
 export function photoUrl(job, name) {
   return `/api/order/${job}/photos/raw?name=${encodeURIComponent(name)}`;  // 预览(若需), 当前用本地 blob 预览
 }
+
+// ── 全局字典(材质简称/类别零件反查/供应商历史) ──
+export async function getDict() {
+  return _json("/api/dict");
+}
+
+export async function learnDict(payload) {
+  return _json("/api/dict/learn", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
+}

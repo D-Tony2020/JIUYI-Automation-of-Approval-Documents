@@ -19,13 +19,14 @@ def _load(name):
 
 def test_to_proposal归一锡线():
     prop = to_proposal(_load("msds_extract.json"), _load("rohs_extract.json"))
-    assert prop["材质"] == "Sn-0.7Cu無鉛錫線"
-    assert prop["供应商"] == "兴鸿泰"                       # 繁体别名归一 興鴻泰→兴鸿泰
+    assert prop["材质"] == "Sn-0.7Cu無鉛錫線" and prop["材质原文"] == "Sn-0.7Cu無鉛錫線"
+    assert "供应商" not in prop                              # B 去供应商(零件级操作员填)
     锡 = [c for c in prop["成份"] if "錫" in c["成份名称"]][0]
     assert 锡["CAS"] == "7440-31-5"                         # '7440-31- 5' 去空格
     assert 锡["重量%"] == "0.993"                           # '99.3wt%' ÷100
+    assert 锡["无CAS"] is False                             # 有CAS→不标黄
     assert prop["RoHS"]["Pb"] == "63"                       # 有数值照填(非因Pass写ND)
-    assert prop["报告日期"] == "2025.06.30"                 # 'Jun 30, 2025' 归一
+    assert prop["报告日期"] == "2025.06.30"
     assert prop["报告编号"] == "SZXEC25002243403"
 
 

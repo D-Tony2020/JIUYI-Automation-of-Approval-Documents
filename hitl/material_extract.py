@@ -111,14 +111,22 @@ def is_msds(full_text, min_cas=2):
 
 
 def to_proposal(msds, rohs=None):
-    """msds/rohs 抽取 dict → 材质提议(归一)。纯函数(零件/材质类别留操作员填)。"""
+    """msds/rohs 抽取 dict → 材质提议(归一)。纯函数。
+
+    B 段只产 材质原文 + 成分 + 报告(去供应商: 供应商是部件级、操作员零件级手填)。
+    材质=B原文(BOM页 resolve→标准名+派生类别/零件); 成份每项标 无CAS(BOM页标黄交人工删)。
+    """
     row = _asm.assemble_row(msds, rohs or {}, "", "", msds.get("material_name", ""))
+    raw = (msds.get("material_name") or "").strip()
+    成份 = []
+    for c in row["成份"]:
+        cas = (c.get("CAS") or "").strip()
+        成份.append({**c, "无CAS": (not cas or cas in ("/", "-"))})
     return {
-        "材质": (msds.get("material_name") or "").strip(),
-        "供应商原文": (msds.get("supplier_name_raw") or "").strip(),
-        "供应商": row["原材料供应商"],          # 别名归一后(未命中则原文, 交人工)
-        "成份": row["成份"],                     # [{成份名称, CAS(去空格), 重量%(÷100)}]
-        "RoHS": row["RoHS"],                     # 10项归一
+        "材质": raw,                             # B原文; BOM页操作员改/字典 resolve→标准名
+        "材质原文": raw,                          # 简称字典记忆键 + 溯源
+        "成份": 成份,                            # [{成份名称, CAS, 重量%, 无CAS}]
+        "RoHS": row["RoHS"],                     # 10项归一(enrich_rohs 后填)
         "报告编号": row["检测报告编号"],
         "报告日期": row["检测报告日期"],
     }

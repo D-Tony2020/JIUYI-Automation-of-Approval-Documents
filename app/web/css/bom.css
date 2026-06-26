@@ -42,3 +42,12 @@ table.comp th, table.comp td { border: 1px solid #e5e7eb; padding: 2px 6px; text
 .rohs-pill { font-size: 11px; padding: 1px 5px; border-radius: 8px; }
 .rohs-pill.ok { background: #f3f4f6; color: #6b7280; }
 .rohs-pill.bad { background: #fee2e2; color: #b91c1c; font-weight: bold; }
+
+/* B段重构: 材质名可编辑 / 零件级供应商 / 成份可编辑 / 无CAS黄行 */
+.matname-in { min-width: 120px; font-weight: 600; font-size: 13px; border: 1px solid #d1d5db; border-radius: 4px; padding: 3px 6px; }
+.psup { width: 130px; font-size: 12px; }
+select.need { border-color: #ef4444; color: #b91c1c; }
+table.comp input.cmp { width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; font-size: 12px; padding: 1px 3px; }
+table.comp input.cmp:focus { border-color: #93c5fd; background: #fff; }
+table.comp tr.nocas td { background: #fffbeb; }
+table.comp tr.nocas input.cmp { color: #b45309; }
