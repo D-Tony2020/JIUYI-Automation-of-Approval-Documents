@@ -126,6 +126,23 @@ def material_specs(stage2_bom, materials_dir):
     return specs, nested, ordered
 
 
+def _part_category(materials):
+    """每零件的部件类别标签(OLE 下方显, 如golden 线材/端子/套管) = 该零件各材质的材质类别去重保序拼接。
+    导线(全线材)→线材; 胶座端子(胶座+端子)→胶座端子; 热缩管(套管)→套管。
+    """
+    cat = {}
+    for m in materials:
+        if m.get("豁免"):
+            continue
+        p = (m.get("零件") or "").strip()
+        c = (m.get("材质类别") or "").strip()
+        if p and c:
+            cat.setdefault(p, [])
+            if c not in cat[p]:
+                cat[p].append(c)
+    return {p: "".join(cs) for p, cs in cat.items()}
+
+
 def pile_specs(materials_dir, sheet_names, drawing_pdf=None, materials=None, part_order=None):
     """非材质级表(部件承认/UL/信赖性/包装/出货/图纸)specs: 按 route() 重路由料堆, GRID/固定位落。
 
@@ -141,21 +158,36 @@ def pile_specs(materials_dir, sheet_names, drawing_pdf=None, materials=None, par
                 if fs:
                     by_short[short].append({"sheet": fs, "pdf": f, "short": short,
                                             "label": os.path.splitext(base)[0]})   # 标签=文件名核心(部件/零件名)
-    pidx = {p: i for i, p in enumerate(part_order or [])}                          # 零件→序
-    def _part_rank(sp):                                                            # 报告推断零件(复用file_link匹配)→序; 推不出留尾
+    partcat = _part_category(materials or [])                                     # 零件→部件类别标签(线材/胶座端子/套管)
+    pidx = {p: i for i, p in enumerate(part_order or [])}
+    parts_seq = [p for p in (part_order or []) if p in partcat]                    # 有类别的零件(采购部件), 按序
+    def _infer_part(sp):                                                          # 报告→零件(复用file_link匹配)
         if not materials:
-            return len(pidx) + 1
+            return ""
         try:
             from hitl.file_link import suggest_for
-            sug = suggest_for(os.path.basename(sp["pdf"]), "其他", materials)
-            return pidx.get((sug or {}).get("零件", ""), len(pidx) + 1)
+            return ((suggest_for(os.path.basename(sp["pdf"]), "其他", materials)) or {}).get("零件", "")
         except Exception:
-            return len(pidx) + 1
+            return ""
     specs = []
     for short, gk in (("部件承认", "部件承认书"), ("UL", "UL证明"), ("信赖性", "信赖性")):
+        # 每报告分配零件: 先匹配能推断的, 余者补剩余采购部件(按序)→ 给"部件标签"(线材/端子/套管, 如golden)+按零件序排。
+        assigned, used = [], set()
+        for sp in by_short[short]:
+            p = _infer_part(sp)
+            assigned.append([sp, p if (p in partcat and p not in used) else None])
+            if assigned[-1][1]:
+                used.add(p)
+        remaining = [p for p in parts_seq if p not in used]
+        ri = 0
+        for pair in assigned:
+            if pair[1] is None and ri < len(remaining):
+                pair[1] = remaining[ri]; ri += 1
+        for sp, p in assigned:
+            sp["部件标签"] = partcat.get(p, "") if p else ""                       # OLE 下方部件类别标签
+        assigned.sort(key=lambda pr: pidx.get(pr[1], len(pidx) + 1))              # 按零件序(稳定→同零件保文件名序)
         g = GRID[gk]
-        ordered_reports = sorted(by_short[short], key=_part_rank)                  # 稳定排序: 同零件保文件名序
-        for sp, (L, T) in zip(ordered_reports, grid_anchors(len(ordered_reports), **g)):
+        for (sp, _p), (L, T) in zip(assigned, grid_anchors(len(assigned), **g)):
             sp.update(L=L, T=T, W=g["w"], H=g["h"])
             specs.append(sp)
     for short in ("包装", "出货"):

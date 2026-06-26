@@ -42,6 +42,17 @@ def test_豁免材质不进装表():
     assert len(ordered) == 2                                  # ordered 同步排除(mat_idx 不错位)
 
 
+def test_part_category部件类别标签():
+    from hitl.placement_plan import _part_category
+    mats = [{"零件": "导线", "材质类别": "线材"}, {"零件": "导线", "材质类别": "线材"},
+            {"零件": "胶座端子", "材质类别": "胶座"}, {"零件": "胶座端子", "材质类别": "端子"},
+            {"零件": "热缩管", "材质类别": "套管"}, {"零件": "导线", "材质类别": "线材", "豁免": True}]
+    cat = _part_category(mats)
+    assert cat["导线"] == "线材"                 # 同类别去重
+    assert cat["胶座端子"] == "胶座端子"          # 多类别拼接(胶座+端子)
+    assert cat["热缩管"] == "套管"
+
+
 def test_拖动改材质归属传递装表():
     # 模拟③把"镀锡铜"从导线拖到端子(moveMatToPart 改 零件) → 装表分组须跟随
     mats = [{"零件": "导线", "材质": "PVC", "files": {}},

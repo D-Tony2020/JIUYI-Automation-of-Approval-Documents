@@ -244,6 +244,19 @@ def embed_many(src_xlsx, out_xlsx, specs):
             else:
                 left, top = spec["L"], spec["T"]
             obj.Left, obj.Top, obj.Width, obj.Height = left, top, spec["W"], spec["H"]
+            tag = (spec.get("部件标签") or "").strip()    # OLE 下方部件类别标签(线材/端子/套管, 如golden)
+            if tag:
+                try:
+                    tb = sh.Shapes.AddTextbox(1, left, top + spec["H"] + 3, spec["W"], 18)  # 1=msoTextOrientationHorizontal
+                    tb.TextFrame.Characters().Text = tag
+                    tb.TextFrame.HorizontalAlignment = -4108            # xlCenter
+                    tb.Line.Visible = False; tb.Fill.Visible = False     # 无边框无填充, 纯文字
+                    try:
+                        tb.TextFrame2.WordWrap = 0
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
         if os.path.exists(out_xlsx):
             os.remove(out_xlsx)
         wb.SaveAs(os.path.abspath(out_xlsx), FileFormat=51)
