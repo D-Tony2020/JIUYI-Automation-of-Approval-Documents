@@ -89,10 +89,35 @@ def run_case(code):
     }
 
 
+def dryrun(cases):
+    """预检(零 qwen): 每案 golden材质数 + 过文本门的候选MSDS + 缓存/需实时, 估这一把要烧几次。"""
+    from hitl.material_extract import candidate_msds, is_extract_cached
+    print(f"=== 预检(零 qwen 调用, {len(cases)} 案) ===\n")
+    total_live = 0
+    for code in cases:
+        golden = _gt_golden(code)
+        materials = os.path.join(PSEUDO, code, "materials")
+        if not golden or not os.path.isdir(materials):
+            print(f"⏭  {code}: 缺 golden 或 materials")
+            continue
+        g = len(parse_golden(golden))
+        cands = candidate_msds(materials)
+        cached = sum(1 for (_b, txt, _f) in cands if is_extract_cached(txt))
+        live = len(cands) - cached
+        total_live += live
+        print(f"{code}: golden材质{g} | 候选MSDS{len(cands)}(缓存{cached} 需实时{live})")
+        for b, txt, _f in cands:
+            print(f"      {'✓缓存' if is_extract_cached(txt) else '●实时'} {b}")
+    print(f"\n充值后跑全量需实时 qwen 调用 ≈ {total_live} 次(其余命中缓存)")
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
     cases = args or sorted(os.path.basename(p) for p in glob.glob(os.path.join(PSEUDO, "*"))
                            if os.path.isdir(p))
+    if "--dryrun" in sys.argv:
+        dryrun(cases)
+        return
     print(f"=== M2.3 无拐杖伪真单 e2e ({len(cases)} 案) ===\n")
     rows = []
     for code in cases:

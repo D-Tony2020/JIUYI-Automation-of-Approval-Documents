@@ -46,6 +46,13 @@ def _cached_extract(text, kind, provider, model):
     return r
 
 
+def is_extract_cached(text, kind="msds"):
+    """该文本的 qwen 抽取是否已在磁盘缓存(预检用: 判这一把要不要实时调用)。"""
+    import hashlib
+    h = hashlib.md5((kind + "|" + text).encode("utf-8")).hexdigest()[:16]
+    return os.path.exists(os.path.join(_CACHE, f"{kind}_{h}.json"))
+
+
 def _safe(fn, timeout=45):
     """守护线程跑 fn, 超时返 None(防本机 pdfplumber/pdftotext 随机挂死)。"""
     res = [None]
@@ -136,15 +143,12 @@ def classify_pile(materials_dir):
     return dict(by)
 
 
-def propose_bom_from_pile(materials_dir, provider=PROVIDER, model=MODEL):
-    """files-first·B提议引擎: 材料堆 → C分类 → 真MSDS(内容确认) → B提议材质清单。
-
-    返回 [{材质,供应商,供应商原文,成份,RoHS,报告编号,报告日期,源文件}]。
-    RoHS 配对(MSDS↔RoHS报告)留 slice4 报告块确认。零件/材质类别由操作员在编辑器填。
-    """
+def candidate_msds(materials_dir):
+    """材料堆 → 过文本门(C分类材质表 + 文件名判真MSDS + MSDS关键词)的候选, 零 qwen 调用。
+    → [(base, txt, full)]。供 B提议前的预检/选材, 也被 propose_bom_from_pile 复用。"""
     import glob
     from hitl.file_router import route
-    props = []
+    out = []
     for f in sorted(glob.glob(os.path.join(materials_dir, "*.pdf"))):
         base = os.path.basename(f)
         if "材质表" not in route(base) or not is_msds_name(base):   # 只取真MSDS(排REACH/SVHC/ROHS报告)
@@ -152,6 +156,18 @@ def propose_bom_from_pile(materials_dir, provider=PROVIDER, model=MODEL):
         txt, full = pdf_text_for_llm(f)
         if not is_msds(full, min_cas=0):                 # 文件名已强过滤报告, 内容门只确认MSDS关键词;
             continue                                     # 简单料(07CU锡线写"Sn-0.7Cu"非CAS号)0个可识CAS也别漏
+        out.append((base, txt, full))
+    return out
+
+
+def propose_bom_from_pile(materials_dir, provider=PROVIDER, model=MODEL):
+    """files-first·B提议引擎: 材料堆 → C分类 → 真MSDS(内容确认) → B提议材质清单。
+
+    返回 [{材质,供应商,供应商原文,成份,RoHS,报告编号,报告日期,源文件}]。
+    RoHS 配对(MSDS↔RoHS报告)留 slice4 报告块确认。零件/材质类别由操作员在编辑器填。
+    """
+    props = []
+    for base, txt, _full in candidate_msds(materials_dir):
         try:
             prop = to_proposal(_cached_extract(txt, "msds", provider, model))
         except Exception:
