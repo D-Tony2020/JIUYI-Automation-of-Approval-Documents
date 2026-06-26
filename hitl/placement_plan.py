@@ -103,11 +103,12 @@ def material_specs(stage2_bom, materials_dir):
 
     specs, mt_specs = [], []
     for mi, m in enumerate(ordered):
+        名 = (m.get("材质") or "").strip()
         for typ in _TYPE_ORDER:
             col = TYPE_COL[typ]
             for fn in _mat_files(m, typ):
                 sp = {"sheet": mt_sheet, "pdf": os.path.join(materials_dir, fn), "short": "材质表",
-                      "mat_idx": mi, "col": col, "W": 56, "H": 42}
+                      "mat_idx": mi, "col": col, "W": 56, "H": 42, "label": f"{名} {typ}".strip()}
                 mt_specs.append(sp)
                 specs.append(sp)
     for sp, (r, c) in zip(mt_specs, mat_anchors_nocrutch(nested, mt_specs)):
@@ -120,7 +121,8 @@ def material_specs(stage2_bom, materials_dir):
             continue
         L, T = cert_pos[mi]
         specs.append({"sheet": cert_sheet, "pdf": os.path.join(materials_dir, msds[0]),
-                      "short": "材质证明", "L": L, "T": T, "W": MATCERT_W, "H": MATCERT_H})
+                      "short": "材质证明", "L": L, "T": T, "W": MATCERT_W, "H": MATCERT_H,
+                      "label": (m.get("材质") or "").strip()})
     return specs, nested, ordered
 
 
@@ -136,7 +138,8 @@ def pile_specs(materials_dir, sheet_names, drawing_pdf=None):
             if short in by_short:
                 fs = _find_sheet(sheet_names, short)
                 if fs:
-                    by_short[short].append({"sheet": fs, "pdf": f, "short": short})
+                    by_short[short].append({"sheet": fs, "pdf": f, "short": short,
+                                            "label": os.path.splitext(base)[0]})   # 标签=文件名核心(部件/零件名)
     specs = []
     for short, gk in (("部件承认", "部件承认书"), ("UL", "UL证明"), ("信赖性", "信赖性")):
         g = GRID[gk]
@@ -153,7 +156,7 @@ def pile_specs(materials_dir, sheet_names, drawing_pdf=None):
         L, T, W, H = DEFAULT_ANCHOR["图纸"]
         if fs:
             specs.append({"sheet": fs, "pdf": drawing_pdf, "short": "图纸",
-                          "L": L, "T": T, "W": 320, "H": 220})
+                          "L": L, "T": T, "W": 320, "H": 220, "label": "图纸"})
     return specs
 
 

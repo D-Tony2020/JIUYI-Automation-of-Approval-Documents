@@ -64,8 +64,9 @@ def assemble(stage2_bom, drawing_meta, dimensions, materials_dir, drawing_pdf, o
         wb.save(cell)
     icondir = os.path.join(outdir, "icons")
     os.makedirs(icondir, exist_ok=True)
-    for s in specs:
-        s["icon"] = make_icon(s["pdf"], os.path.join(icondir, os.path.basename(s["pdf"]) + ".png"))
+    for k, s in enumerate(specs):       # 序号前缀: 同 pdf 多 spec(不同标签)各生独立图标, 防覆盖→标签↔pdf一一对齐
+        s["icon"] = make_icon(s["pdf"], os.path.join(icondir, f"{k:03d}_{os.path.basename(s['pdf'])}.png"),
+                              label=s.get("label"))
     if os.path.exists(out_xlsx):
         os.remove(out_xlsx)
     embed_many(cell, out_xlsx, specs)

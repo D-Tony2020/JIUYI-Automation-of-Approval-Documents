@@ -116,7 +116,7 @@ def original_filename(xlsx_path, ole_basename):
     return None
 
 
-def _fallback_icon(out_png):
+def _fallback_icon(out_png, label=None):
     """通用占位图标(源PDF空/损坏时用)，fitz 画一张, 不依赖 PIL。"""
     doc = fitz.open()
     page = doc.new_page(width=120, height=150)
@@ -124,21 +124,57 @@ def _fallback_icon(out_png):
     page.insert_text((28, 80), "PDF", fontsize=24, color=(0.6, 0, 0))
     page.get_pixmap(dpi=96).save(out_png)
     doc.close()
+    if label:
+        _label_icon(out_png, str(label))
 
 
-def make_icon(pdf, out_png, dpi=110):
-    """渲染 PDF 首页为 PNG 预览。失败(空/损坏)则用通用占位图标, 不崩。返回 out_png。"""
+def _load_cjk_font(size):
+    """中文标签字体(Windows 自带), 取不到退默认。"""
+    from PIL import ImageFont
+    for fp in (r"C:\Windows\Fonts\msyh.ttc", r"C:\Windows\Fonts\simhei.ttf",
+               r"C:\Windows\Fonts\simsun.ttc", r"C:\Windows\Fonts\msyhbd.ttc"):
+        if os.path.exists(fp):
+            try:
+                return ImageFont.truetype(fp, size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
+
+
+def _label_icon(png, label):
+    """图标底部叠一条标签带(料名/零件名)→嵌入的 OLE 一眼可辨, 标签即该 pdf 自己的, 天然对齐。"""
+    try:
+        from PIL import Image, ImageDraw
+        im = Image.open(png).convert("RGB")
+        W, H = im.size
+        bar = max(int(H * 0.13), 24)
+        dr = ImageDraw.Draw(im)
+        dr.rectangle([0, H - bar, W, H], fill=(31, 41, 55))           # 深底色带
+        txt = label if len(label) <= 16 else label[:15] + "…"
+        font = _load_cjk_font(max(int(bar * 0.6), 12))
+        tb = dr.textbbox((0, 0), txt, font=font)
+        tw, th = tb[2] - tb[0], tb[3] - tb[1]
+        dr.text(((W - tw) / 2 - tb[0], H - bar + (bar - th) / 2 - tb[1]), txt, fill=(255, 255, 255), font=font)
+        im.save(png)
+    except Exception:
+        pass                                                          # 标签失败不影响嵌入
+
+
+def make_icon(pdf, out_png, dpi=110, label=None):
+    """渲染 PDF 首页为 PNG 预览, 可叠料名/零件名标签。失败(空/损坏)则用通用占位图标, 不崩。返回 out_png。"""
     try:
         d = fitz.open(pdf)
         try:
             if d.page_count > 0:
                 d[0].get_pixmap(dpi=dpi).save(out_png)
+                if label:
+                    _label_icon(out_png, str(label))
                 return out_png
         finally:
             d.close()
     except Exception:
         pass
-    _fallback_icon(out_png)
+    _fallback_icon(out_png, label)
     return out_png
 
 
