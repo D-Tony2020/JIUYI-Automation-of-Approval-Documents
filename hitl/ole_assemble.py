@@ -150,8 +150,15 @@ def _label_icon(png, label):
         bar = max(int(H * 0.13), 24)
         dr = ImageDraw.Draw(im)
         dr.rectangle([0, H - bar, W, H], fill=(31, 41, 55))           # 深底色带
-        txt = label if len(label) <= 16 else label[:15] + "…"
-        font = _load_cjk_font(max(int(bar * 0.6), 12))
+        txt = label if len(label) <= 20 else label[:19] + "…"
+        size = max(int(bar * 0.6), 12)
+        font = _load_cjk_font(size)
+        while size > 8:                                               # 缩字号至文字宽 ≤ 图标92%(防长标签裁字)
+            tb = dr.textbbox((0, 0), txt, font=font)
+            if (tb[2] - tb[0]) <= W * 0.92:
+                break
+            size -= 1
+            font = _load_cjk_font(size)
         tb = dr.textbbox((0, 0), txt, font=font)
         tw, th = tb[2] - tb[0], tb[3] - tb[1]
         dr.text(((W - tw) / 2 - tb[0], H - bar + (bar - th) / 2 - tb[1]), txt, fill=(255, 255, 255), font=font)
