@@ -25,18 +25,23 @@ import extract as _ex                           # spike/extract.py
 import assemble as _asm                         # spike/assemble.py
 from pdf_text import pdf_to_text, pdf_to_table_markdown
 
-PROVIDER, MODEL = "qwen", "qwen-plus"           # 照搬盲测97%路径(文本模型)
+PROVIDER, MODEL = "qwen", "qwen3.7-plus"        # qwen3.7-plus(多模态+深度思考, 抽取关思考); 旧路径 qwen-plus
 _CAS = re.compile(r"\d{2,7}-\d{2}-\d")
 _CACHE = os.path.join(ROOT, ".work", "material_cache")
 
 
-def _cached_extract(text, kind, provider, model):
-    """qwen 抽取磁盘缓存(md5 of kind+text), 重跑/e2e 不重烧 token。kind=msds|rohs。"""
+def _extract_key(text, kind, provider, model):
+    """抽取缓存键: md5(provider|model|kind|text)。并入模型→换模型不复用旧模型缓存(防口径污染)。"""
     import hashlib
+    return hashlib.md5(("|".join((provider, model or "", kind, text))).encode("utf-8")).hexdigest()[:16]
+
+
+def _cached_extract(text, kind, provider, model):
+    """qwen 抽取磁盘缓存(键含模型), 重跑/e2e 不重烧 token。kind=msds|rohs。"""
     import json
     if provider == "mock":
         return _ex.extract_msds(text, provider) if kind == "msds" else _ex.extract_rohs(text, provider)
-    h = hashlib.md5((kind + "|" + text).encode("utf-8")).hexdigest()[:16]
+    h = _extract_key(text, kind, provider, model)
     cf = os.path.join(_CACHE, f"{kind}_{h}.json")
     if os.path.exists(cf):
         return json.load(open(cf, encoding="utf-8"))
@@ -46,10 +51,9 @@ def _cached_extract(text, kind, provider, model):
     return r
 
 
-def is_extract_cached(text, kind="msds"):
-    """该文本的 qwen 抽取是否已在磁盘缓存(预检用: 判这一把要不要实时调用)。"""
-    import hashlib
-    h = hashlib.md5((kind + "|" + text).encode("utf-8")).hexdigest()[:16]
+def is_extract_cached(text, kind="msds", provider=PROVIDER, model=MODEL):
+    """该文本的抽取是否已在磁盘缓存(预检用: 判这一把要不要实时调用)。键须与 _cached_extract 一致。"""
+    h = _extract_key(text, kind, provider, model)
     return os.path.exists(os.path.join(_CACHE, f"{kind}_{h}.json"))
 
 

@@ -40,9 +40,12 @@ def _call_llm(provider: str, prompt: str, model: str = None) -> dict:
     if not key:
         raise RuntimeError(f"未找到 {provider} 的 API key，请设置环境变量之一: {cfg['key_env']}")
     url = cfg["base_url"].rstrip("/") + "/chat/completions"
-    body = {"model": model or cfg["model"],
+    _model = model or cfg["model"]
+    body = {"model": _model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0}
+    if "qwen3" in _model.lower():        # qwen3.x 深度思考模型: 结构化抽取关思考(快~5x, 非流式OK, JSON更干净)
+        body["enable_thinking"] = False
 
     # 代理：默认直连(--noproxy *)；JIUYI_PROXY=http://... 则用 -x
     mode = os.environ.get("JIUYI_PROXY", "direct").strip()

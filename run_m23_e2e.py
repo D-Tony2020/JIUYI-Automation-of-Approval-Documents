@@ -64,8 +64,24 @@ def match(b_mats, g_mats):
     for jac, recall, gi, bi in cand:
         if gi in g_match or bi in used_b:
             continue
-        g_match[gi] = (bi, recall)
+        g_match[gi] = (bi, recall, "cas")
         used_b.add(bi)
+    # 名/源文件兜底: CAS没对上的(聚合物多CAS号: PA66源37640-57-6 vs golden63428-84-2)按材质名substring对(操作员就这么认)
+    def _norm(s):
+        return "".join(str(s or "").split()).upper()
+    for gi in range(len(g_mats)):
+        if gi in g_match:
+            continue
+        gname = _norm(g_mats[gi].get("材质"))
+        if len(gname) < 4:                       # 太短(锡/铜)易误配, 只信CAS
+            continue
+        for bi in range(len(b_mats)):
+            if bi in used_b:
+                continue
+            if gname in _norm(b_mats[bi].get("材质")) + _norm(b_mats[bi].get("源文件")):
+                g_match[gi] = (bi, None, "name")  # 名兜底(非CAS对): 不计入CAS召回
+                used_b.add(bi)
+                break
     extra_b = [bi for bi in range(len(b_mats)) if bi not in used_b]
     return g_match, extra_b
 
@@ -78,12 +94,14 @@ def run_case(code):
     g_mats = parse_golden(golden)
     b_mats = propose_bom_from_pile(materials)
     g_match, extra_b = match(b_mats, g_mats)
-    recalls = [sc for (_, sc) in g_match.values()]
+    recalls = [sc for (_, sc, how) in g_match.values() if how == "cas"]
+    name_cnt = sum(1 for (_, _, how) in g_match.values() if how == "name")
     missing = [str(g_mats[gi].get("材质") or "?") for gi in range(len(g_mats)) if gi not in g_match]
     extra = [str(b_mats[bi].get("材质") or "?") for bi in extra_b]
     return {
         "code": code, "golden材质": len(g_mats), "B提议": len(b_mats),
         "覆盖": len(g_match), "覆盖率": len(g_match) / len(g_mats) if g_mats else 0,
+        "CAS对": len(recalls), "名兜底对": name_cnt,
         "CAS召回均": sum(recalls) / len(recalls) if recalls else 0.0,
         "漏": missing, "多提议": extra,
     }
@@ -133,7 +151,7 @@ def main():
         flag = "✅" if r["覆盖率"] >= 0.99 else ("🟡" if r["覆盖率"] >= 0.75 else "🔴")
         print(f"{flag} {r['code']}: golden材质{r['golden材质']} B提议{r['B提议']} | "
               f"覆盖{r['覆盖']}/{r['golden材质']}({r['覆盖率']*100:.0f}%) "
-              f"CAS召回{r['CAS召回均']*100:.0f}%")
+              f"[CAS对{r['CAS对']}+名兜底{r['名兜底对']}] CAS召回{r['CAS召回均']*100:.0f}%")
         if r["漏"]:
             print(f"      漏提议(多因无MSDS): {' / '.join(r['漏'])}")
         if r["多提议"]:
