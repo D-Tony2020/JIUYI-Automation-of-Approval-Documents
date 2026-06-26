@@ -179,3 +179,36 @@ def propose_bom_from_pile(materials_dir, provider=PROVIDER, model=MODEL):
         prop["源文件"] = base
         props.append(prop)
     return props
+
+
+def enrich_rohs(materials, materials_dir, provider=PROVIDER, model=MODEL):
+    """给已链 RoHS 报告的材质, B 读报告抽 10 项 RoHS 值填进 material['RoHS'](+报告号/日期)。
+
+    材质表 RoHS 列(M-V)的值来自第三方 RoHS 检测报告(非 MSDS)。file_link 已把 RoHS 报告配到材质,
+    本函数对每材质的 files.RoHS[0] 跑 extract_rohs(缓存) → 归一填值。原地改 materials 并返回。
+    无 RoHS 报告的材质不动(留空, 导出预检会软警)。
+    """
+    from hitl.material_table import ROHS_KEYS, normalize_date, normalize_rohs
+    for m in materials:
+        fz = m.get("files") or {}
+        rf = fz.get("RoHS") or []
+        rf = [rf] if isinstance(rf, str) else rf
+        rpdf = os.path.join(materials_dir, rf[0]) if rf else None
+        if not rpdf or not os.path.exists(rpdf):
+            continue
+        try:
+            txt, _ = pdf_text_for_llm(rpdf)
+            r = _cached_extract(txt, "rohs", provider, model)
+        except Exception:
+            continue
+        rin = r.get("rohs", {}) if isinstance(r, dict) else {}
+        out = {}
+        for k in ROHS_KEYS:
+            cell = rin.get(k, "")
+            out[k] = normalize_rohs(cell.get("result", "") if isinstance(cell, dict) else cell)
+        if any(out.values()):
+            m["RoHS"] = out
+            if isinstance(r, dict):                       # 报告号/日期也从 RoHS 报告补(溯源用)
+                m["报告编号"] = m.get("报告编号") or (r.get("report_number") or "").strip()
+                m["报告日期"] = m.get("报告日期") or normalize_date(r.get("report_date_raw", ""))
+    return materials

@@ -153,11 +153,13 @@ async def bom_confirm(job: str, request: Request):
     # 文件↔材质链(M2.4 OLE放置据此落K/L/Y格); 认不准的报告留确认环②人工拖
     try:
         from hitl.file_link import link_materials
+        from hitl.material_extract import enrich_rohs
         linked, unlinked = link_materials(state.materials_dir(job), s.get("materials", []))
+        enrich_rohs(linked, state.materials_dir(job))        # B 读 RoHS 报告填 10 项值(+报告号/日期)
         s["materials"] = linked
         s["unlinked_files"] = [{"文件": b, "类型": t} for b, t in unlinked]
     except Exception:
-        pass                                     # 链失败不挡放行(M2.4 可纯人工拖)
+        pass                                     # 链/抽失败不挡放行(M2.4 可纯人工拖)
     state.save_json(job, "stage2_bom.json", s)
     proj = state.load_json(job, "project.json", {"job": job})
     proj["step"] = 3
