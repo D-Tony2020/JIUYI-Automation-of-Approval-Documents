@@ -192,6 +192,9 @@ def filetree_state(job: str):
     s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json")
     if not s:
         raise HTTPException(404, "本单未完成BOM脊柱")
+    if s.get("unlinked_files"):                       # 认不准报告附"建议归属"(BOM材质颜色/token, 操作员一点即挂)
+        from hitl.file_link import suggest_unlinked
+        s = dict(s, unlinked_files=suggest_unlinked(s.get("materials", []), s["unlinked_files"]))
     return s
 
 

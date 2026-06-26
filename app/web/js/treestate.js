@@ -52,7 +52,7 @@ export function planTree(stage2_bom, partOrder) {
     if (m.豁免) return;                                   // 豁免(重复/特殊)不进文件树, 与装表一致
     const p = (m.零件 || "").trim() || "(未归零件)";
     if (!parts[p]) { parts[p] = []; order.push(p); }
-    parts[p].push(i);
+    parts[p].push(materials.length);                     // 指向密集 materials 的位置(非原索引, 豁免后会错位)
     const slots = {};
     for (const col of COLS) slots[col.key] = filesOfCol(m, col);
     materials.push({ idx: i, 材质: m.材质 || `材质${i + 1}`, 零件: m.零件 || "", 豁免: false, slots });

@@ -6,7 +6,7 @@ import sys
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 sys.path.insert(0, ROOT)
 
-from hitl.file_link import _ident, _match_report, report_type
+from hitl.file_link import _ident, _match_report, report_type, suggest_for
 
 
 def test_report_type():
@@ -54,3 +54,27 @@ def test_无把握返回None():
     props = [{"材质": "PVC塑胶粒", "源文件": "PVC  MSDS.pdf"}]
     ident = [_ident(p) for p in props]
     assert _match_report("红-CANEC25029576401(GZP25-033088).pdf", ident) is None  # 只有色+号→认不准
+
+
+# ── 建议归属 suggest_for(认不准报告→建议挂哪个材质; token主、颜色兜底) ──
+def test_suggest颜色兜底纯色号():
+    mats = [{"材质": "白色油墨", "零件": "导线"}, {"材质": "黑色油墨", "零件": "导线"}]
+    r = suggest_for("黑-CANEC25029526001(GZP25-033088).pdf", "RoHS", mats)   # 纯色号墨报告
+    assert r and r["材质"] == "黑色油墨" and r["据"] == "色" and r["col"] == "Y" and r["idx"] == 1
+
+
+def test_suggest_token主胜过颜色():
+    mats = [{"材质": "黑色油墨", "零件": "导线"},
+            {"材质": "镀锡铜", "零件": "导线", "源文件": "镀锡铜MSDS.pdf"}]
+    r = suggest_for("镀锡黑色ROHS CANEC.pdf", "RoHS", mats)                   # 含镀锡token + 黑色
+    assert r["材质"] == "镀锡铜" and r["据"] == "名"                          # token主, 不被黑色带偏到油墨
+
+
+def test_suggest无据返None():
+    mats = [{"材质": "PVC塑胶粒", "零件": "导线"}]                            # 无红色材质
+    assert suggest_for("红-CANEC25029576401(GZP25-033088).pdf", "RoHS", mats) is None
+
+
+def test_suggest豁免不入选():
+    mats = [{"材质": "黑色油墨", "零件": "导线", "豁免": True}]
+    assert suggest_for("黑-CANEC25029526001.pdf", "RoHS", mats) is None       # 豁免材质不作建议

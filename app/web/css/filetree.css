@@ -29,6 +29,10 @@
 /* 文件 chip(可拖) */
 .filechip { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; background: #eef2ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; margin: 2px 0; cursor: grab; max-width: 100%; }
 .filechip.unl { background: #fef3c7; color: #92400e; }
+.unl-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sugbtn { font-size: 11px; padding: 2px 8px; border: 1px solid #16a34a; background: #f0fdf4; color: #15803d; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.sugbtn:hover { background: #16a34a; color: #fff; }
+.sugbtn small { font-size: 9px; opacity: .8; }
 .filechip em { font-style: normal; font-size: 10px; opacity: .7; }
 .filechip .x { border: none; background: transparent; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; padding: 0 0 0 2px; }
 .filechip:active { cursor: grabbing; }

@@ -93,6 +93,44 @@ def link_materials(materials_dir, proposals):
     return linked, unlinked
 
 
+_TYPE_COL = {"RoHS": "Y", "REACH": "L", "SVHC": "L", "其他": "K", "MSDS": "K"}
+
+
+def suggest_for(filename, typ, materials):
+    """认不准报告 → 建议归属(比 link 低阈值: 弱token主、颜色兜底纯色号报告)。
+
+    用 BOM 操作员确认的 材质名/零件 增量归属(老板要的连续性)。颜色只能区别不能唯一定材→只建议不自动挂。
+    返回 {材质, 零件, col, 据} 或 None。
+    """
+    fn = _norm(filename)
+    fcol = _color(filename)
+    col = _TYPE_COL.get(typ, "L")
+    best, bs = None, 0
+    for i, m in enumerate(materials):                # ① 名/源文件 distinctive token(主)
+        if m.get("豁免"):
+            continue
+        toks, _mc = _ident(m)
+        s = max((len(t) for t in toks if _usable_tok(t) and t in fn), default=0)
+        if s > bs:
+            bs, best = s, (i, m)
+    if best:
+        i, m = best
+        return {"idx": i, "材质": m.get("材质", ""), "零件": m.get("零件", ""), "col": col, "据": "名"}
+    if fcol:                                          # ② 无token → 颜色兜底(纯色号CANEC墨报告)
+        for i, m in enumerate(materials):
+            if not m.get("豁免") and _color(m.get("材质", "")) == fcol:
+                return {"idx": i, "材质": m.get("材质", ""), "零件": m.get("零件", ""), "col": col, "据": "色"}
+    return None
+
+
+def suggest_unlinked(materials, unlinked):
+    """给每个认不准报告附建议归属(操作员一点即挂)。unlinked=[{文件,类型}]。"""
+    out = []
+    for u in unlinked or []:
+        out.append(dict(u, 建议=suggest_for(u.get("文件", ""), u.get("类型", ""), materials)))
+    return out
+
+
 if __name__ == "__main__":
     import io
     import json

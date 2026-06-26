@@ -43,6 +43,16 @@ def test_planTree豁免不进树():
     assert r["n"] == 1 and r["名"] == ["PVC"]
 
 
+def test_planTree豁免后parts指向密集位置():
+    b = ("{materials:[{材质:'PVC',零件:'导线',files:{MSDS:'a.pdf'}},"
+         "{材质:'重复',零件:'导线',豁免:true,files:{}},"            # 中间豁免→后续会错位
+         "{材质:'镀锡铜',零件:'导线',files:{MSDS:'b.pdf'}}]}")
+    r = _node(f"const t=m.planTree({b});console.log(JSON.stringify("
+              "{parts:t.parts['导线'],名:t.parts['导线'].map(i=>t.materials[i].材质)}));")
+    assert r["parts"] == [0, 1]                          # 密集位置(非原索引0,2)
+    assert r["名"] == ["PVC", "镀锡铜"]                   # 指向对的材质而非 undefined
+
+
 def test_planTree继承零件顺序():
     b = "{materials:[{材质:'锡',零件:'锡',files:{MSDS:'a.pdf'}},{材质:'PVC',零件:'导线',files:{MSDS:'b.pdf'}}]}"
     r = _node(f"const t=m.planTree({b},['导线','锡']);console.log(JSON.stringify(t.order));")

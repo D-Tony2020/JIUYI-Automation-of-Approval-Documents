@@ -55,9 +55,12 @@ function matRow(m) {
 }
 
 function renderUnlinked(unlinked) {
-  const chips = unlinked.map((u, j) =>
-    `<span class="filechip unl" draggable="true" data-from="unlinked" data-type="${esc(u.类型)}" data-file="${esc(u.文件)}" data-j="${j}" title="${esc(u.文件)}">${esc(shortName(u.文件))} <em>${esc(u.类型)}</em></span>`).join("");
-  $("unlinked").innerHTML = chips || `<div class="drag-hint">无认不准报告 ✓<br><small>把材质上挂错的也可拖回这里</small></div>`;
+  const rows = unlinked.map((u, j) => {
+    const s = u.建议;
+    const sug = s ? `<button class="sugbtn" data-sug="${j}" title="一点即挂到「${esc(s.材质)}」的 ${esc(s.col)} 列(${s.据 === "色" ? "按颜色" : "按名称"}匹配)">↳建议挂 ${esc(s.材质)}${s.据 === "色" ? " <small>按色</small>" : ""}</button>` : "";
+    return `<div class="unl-row"><span class="filechip unl" draggable="true" data-from="unlinked" data-type="${esc(u.类型)}" data-file="${esc(u.文件)}" data-j="${j}" title="${esc(u.文件)}">${esc(shortName(u.文件))} <em>${esc(u.类型)}</em></span>${sug}</div>`;
+  }).join("");
+  $("unlinked").innerHTML = rows || `<div class="drag-hint">无认不准报告 ✓<br><small>把材质上挂错的也可拖回这里</small></div>`;
 }
 
 // ── 拖拽 ────────────────────────────────────────────────────
@@ -79,6 +82,7 @@ function bind() {
   uz.addEventListener("drop", (e) => { e.preventDefault(); uz.classList.remove("drag-over"); dropToUnlinked(); });
   document.querySelectorAll("[data-unlink]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); const [i, t, f] = el.dataset.unlink.split("|"); unlinkFile(+i, t, f); });
   document.querySelectorAll("[data-exempt]").forEach((el) => el.onclick = () => toggleExempt(+el.dataset.exempt));
+  document.querySelectorAll("[data-sug]").forEach((el) => el.onclick = () => attachSuggested(+el.dataset.sug));
   $("gatebtn").onclick = onConfirm;
 }
 
@@ -102,6 +106,17 @@ function dropTo(token) {
   fz[bucket] = Array.isArray(fz[bucket]) ? fz[bucket] : (fz[bucket] ? [fz[bucket]] : []);
   if (!fz[bucket].includes(S.drag.file)) fz[bucket].push(S.drag.file);
   S.drag = null; save(); render();
+}
+
+function attachSuggested(j) {
+  const u = S.bom.unlinked_files[j];
+  if (!u || !u.建议) return;
+  const mi = u.建议.idx, bucket = u.类型 || COL_BUCKET[u.建议.col];   // 落原类型桶(RoHS/SVHC/REACH→对的列)
+  S.bom.unlinked_files.splice(j, 1);
+  const fz = S.bom.materials[mi].files = S.bom.materials[mi].files || {};
+  fz[bucket] = Array.isArray(fz[bucket]) ? fz[bucket] : (fz[bucket] ? [fz[bucket]] : []);
+  if (!fz[bucket].includes(u.文件)) fz[bucket].push(u.文件);
+  save(); render();
 }
 
 function dropToUnlinked() {
