@@ -51,6 +51,8 @@ def stage2_to_nested_bom(materials, part_order=None):
     """
     parts, src, order = {}, {}, []
     for m in materials:
+        if m.get("豁免"):                       # 豁免(重复合并/特殊)不进材质表+不嵌OLE(前端用户流跟进)
+            continue
         p = (m.get("零件") or "").strip()
         if p not in parts:
             parts[p] = {"零件": p, "供应商": (m.get("供应商") or "").strip(),

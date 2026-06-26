@@ -32,6 +32,16 @@ STAGE2 = {
 }
 
 
+def test_豁免材质不进装表():
+    mats = [{"零件": "导线", "材质": "PVC", "files": {}},
+            {"零件": "导线", "材质": "白墨重复", "豁免": True, "files": {}},   # 合并的重复→豁免
+            {"零件": "导线", "材质": "镀锡铜", "files": {}}]
+    nested, ordered = stage2_to_nested_bom(mats)
+    名 = [m["材质"] for p in nested for m in p["materials"]]
+    assert "白墨重复" not in 名 and 名 == ["PVC", "镀锡铜"]      # 豁免排除, 不进材质表
+    assert len(ordered) == 2                                  # ordered 同步排除(mat_idx 不错位)
+
+
 def test_part_order_显式排序():
     mats = [{"零件": "锡", "材质": "锡", "files": {}}, {"零件": "导线", "材质": "PVC", "files": {}}]
     nested, ordered = stage2_to_nested_bom(mats, part_order=["导线", "锡"])
