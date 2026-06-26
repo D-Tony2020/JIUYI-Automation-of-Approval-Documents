@@ -10,7 +10,8 @@ import os
 import re
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-_FILES = {"alias": "材质简称字典.json", "catpart": "材质类别零件字典.json", "supplier": "供应商历史.json"}
+_FILES = {"alias": "材质简称字典.json", "catpart": "材质类别零件字典.json",
+          "supplier": "供应商历史.json", "part_order": "零件顺序.json"}
 
 
 def _path(kind):
@@ -106,6 +107,31 @@ def add_supplier(name):
     return h
 
 
+def part_order():
+    """零件展示/项次顺序(全局持久化; 业务上改一次基本固定)。"""
+    return _load("part_order", [])
+
+
+def set_part_order(order):
+    """拖动排序后落盘(去空/去重保序)。"""
+    seen, out = set(), []
+    for p in order or []:
+        p = str(p or "").strip()
+        if p and p not in seen:
+            seen.add(p)
+            out.append(p)
+    _save("part_order", out)
+    return out
+
+
+def order_parts(parts, order=None):
+    """把零件列表按持久化顺序排(顺序内的按序在前, 顺序外的按原序追加)。"""
+    order = part_order() if order is None else order
+    idx = {p: i for i, p in enumerate(order)}
+    return sorted(parts, key=lambda p: (idx.get(p, len(order)),))
+
+
 def all_dicts():
-    """前端一次拉全(BOM 页 resolve + 下拉)。"""
-    return {"alias": alias_table(), "catpart": catpart_table(), "suppliers": supplier_history()}
+    """前端一次拉全(BOM 页 resolve + 下拉 + 零件顺序)。"""
+    return {"alias": alias_table(), "catpart": catpart_table(),
+            "suppliers": supplier_history(), "part_order": part_order()}

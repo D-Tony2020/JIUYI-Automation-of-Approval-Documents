@@ -59,6 +59,24 @@ function afterExtract() {
 // ── 渲染 ────────────────────────────────────────────────────
 function parts() { return [...new Set(S.materials.map((m) => (m.零件 || "").trim()).filter(Boolean))]; }
 
+function orderParts(order) {   // 按持久化零件顺序排(序内在前, 序外保原序)
+  const po = S.dicts.part_order || [];
+  const idx = {}; po.forEach((p, i) => (idx[p] = i));
+  return [...order].sort((a, b) => (idx[a] == null ? po.length : idx[a]) - (idx[b] == null ? po.length : idx[b]));
+}
+
+function reorderParts(from, to) {   // 拖动改零件顺序 + 持久化(保留他单零件)
+  if (!from || !to || from === to) return;
+  const cur = orderParts(parts());
+  const fi = cur.indexOf(from), ti = cur.indexOf(to);
+  if (fi < 0 || ti < 0) return;
+  cur.splice(fi, 1); cur.splice(ti, 0, from);
+  const merged = cur.concat((S.dicts.part_order || []).filter((p) => !cur.includes(p)));
+  S.dicts.part_order = merged;
+  api.learnDict({ part_order: merged }).catch(() => {});
+  render();
+}
+
 function render() {
   renderToolbar();
   const { parts: grp, order, unclaimed } = groupByPart(S.materials);
@@ -70,10 +88,11 @@ function render() {
       + unclaimed.filter(passFilter).map((i) => card(i, dupOf)).join("") + `</div>`;
   }
   if (S.view.group) {
-    for (const p of order) {
+    for (const p of orderParts(order)) {
       const idxs = grp[p].filter(passFilter);
       const sup = supplierOf(p);
-      html += `<div class="part-group"><div class="part-head">▸ ${esc(p)} <small>${grp[p].length}件</small>`
+      html += `<div class="part-group"><div class="part-head" draggable="true" data-pgdrag="${esc(p)}" title="拖动调零件顺序(持久化)">`
+        + `<span class="draghandle">⠿</span> ▸ ${esc(p)} <small>${grp[p].length}件</small>`
         + ` · 供应商 <input class="inp psup" list="suplist" data-psup="${esc(p)}" value="${esc(sup)}" placeholder="零件级手填">`
         + `</div>` + idxs.map((i) => card(i, dupOf)).join("") + `</div>`;
     }
@@ -172,6 +191,12 @@ function bind() {
   document.querySelectorAll("[data-part]").forEach((el) => el.onchange = () => setPart(+el.dataset.part, el.value));
   document.querySelectorAll("[data-cat]").forEach((el) => el.onchange = () => { S.materials[+el.dataset.cat].材质类别 = el.value; save(); render(); });
   document.querySelectorAll("[data-psup]").forEach((el) => el.onchange = () => setPartSupplier(el.dataset.psup, el.value));
+  document.querySelectorAll(".part-head[draggable]").forEach((el) => {
+    el.addEventListener("dragstart", (e) => { S.pgDrag = el.dataset.pgdrag; e.dataTransfer.effectAllowed = "move"; });
+    el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("pg-over"); });
+    el.addEventListener("dragleave", () => el.classList.remove("pg-over"));
+    el.addEventListener("drop", (e) => { e.preventDefault(); el.classList.remove("pg-over"); reorderParts(S.pgDrag, el.dataset.pgdrag); });
+  });
   document.querySelectorAll("[data-chk]").forEach((el) => el.onchange = () => { S.materials[+el.dataset.chk].已核对 = el.checked; save(); render(); });
   document.querySelectorAll("[data-exp]").forEach((el) => el.onclick = () => { const i = +el.dataset.exp; S.expanded.has(i) ? S.expanded.delete(i) : S.expanded.add(i); render(); });
   document.querySelectorAll("[data-exempt]").forEach((el) => el.onclick = () => toggleExempt(+el.dataset.exempt));

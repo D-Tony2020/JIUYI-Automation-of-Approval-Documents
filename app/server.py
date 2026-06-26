@@ -28,6 +28,14 @@ WEB = os.path.join(APP_DIR, "web")
 app = FastAPI(title="确认环① 图纸识别")
 
 
+@app.middleware("http")
+async def _no_cache(request, call_next):
+    """开发/手测期: 前端静态不缓存(否则改了 JS 浏览器仍跑旧版, 手测看不到变化)。"""
+    resp = await call_next(request)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
+
+
 def _dims_to_json(dims):
     """drawing_extract 的 (中心,上,下) → 前端 dict + 派生 LSL/USL(口径=hitl.fai.spec_limits)。"""
     out = []
@@ -326,6 +334,8 @@ async def learn_dict(request: Request):
         dicts.learn_catpart(e.get("std"), e.get("材质类别"), e.get("零件"))
     for s in body.get("suppliers", []):
         dicts.add_supplier(s)
+    if "part_order" in body:
+        dicts.set_part_order(body["part_order"])
     return dicts.all_dicts()
 
 

@@ -51,3 +51,9 @@ table.comp input.cmp { width: 100%; box-sizing: border-box; border: 1px solid tr
 table.comp input.cmp:focus { border-color: #93c5fd; background: #fff; }
 table.comp tr.nocas td { background: #fffbeb; }
 table.comp tr.nocas input.cmp { color: #b45309; }
+
+/* 零件组拖动排序 */
+.part-head[draggable] { cursor: default; }
+.part-head .draghandle { cursor: grab; color: #9ca3af; padding: 0 4px; user-select: none; }
+.part-head .draghandle:active { cursor: grabbing; }
+.part-head.pg-over { background: #dbeafe; box-shadow: 0 -2px 0 #0284c7 inset; }

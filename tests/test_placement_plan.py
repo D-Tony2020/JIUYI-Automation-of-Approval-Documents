@@ -32,6 +32,20 @@ STAGE2 = {
 }
 
 
+def test_part_order_显式排序():
+    mats = [{"零件": "锡", "材质": "锡", "files": {}}, {"零件": "导线", "材质": "PVC", "files": {}}]
+    nested, ordered = stage2_to_nested_bom(mats, part_order=["导线", "锡"])
+    assert [p["零件"] for p in nested] == ["导线", "锡"]      # 按 part_order, 非首现序(锡在前)
+    assert [m["材质"] for m in ordered] == ["PVC", "锡"]      # ordered 同步(mat_idx 对齐)
+
+
+def test_part_order_序外保首现():
+    mats = [{"零件": "X", "材质": "a", "files": {}}, {"零件": "导线", "材质": "b", "files": {}},
+            {"零件": "Y", "材质": "c", "files": {}}]
+    nested, _ = stage2_to_nested_bom(mats, part_order=["导线"])
+    assert [p["零件"] for p in nested] == ["导线", "X", "Y"]  # 导线提前, X/Y 保首现序
+
+
 def test_嵌套分组保序():
     nested, ordered = stage2_to_nested_bom(STAGE2["materials"])
     assert [p["零件"] for p in nested] == ["导线", "端子"]

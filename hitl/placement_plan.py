@@ -41,13 +41,13 @@ def _find_sheet(sheet_names, short):
     return None
 
 
-def stage2_to_nested_bom(materials):
+def stage2_to_nested_bom(materials, part_order=None):
     """stage2 扁平 materials → (nested_bom, ordered)。
 
     nested_bom = inject_data/compute_layout 吃的嵌套格(零件→材质→单报告块)。
-    ordered = 按"零件首现序 × 零件内 stage2 序"展开的 stage2 材质列表——其下标即 mat_idx,
+    ordered = 按"零件序 × 零件内 stage2 序"展开的 stage2 材质列表——其下标即 mat_idx,
              与 compute_layout(nested) 的展开序逐一对齐(放置不落错行的根)。
-    一材一块(stage2 一 MSDS 一材质); 材质类别零件级合并(首材质写余空, 同 to_inject_bom)。
+    part_order: 零件展示顺序(持久化拖动序); 给则零件按它排(项次跟随), 否则零件首现序。
     """
     parts, src, order = {}, {}, []
     for m in materials:
@@ -64,6 +64,15 @@ def stage2_to_nested_bom(materials):
                         "报告编号": m.get("报告编号", ""), "报告日期": m.get("报告日期", "")}],
         })
         src[p].append(m)
+    if part_order is None:                              # 默认读全局持久化零件顺序(下游自动跟随)
+        try:
+            from hitl import dicts
+            part_order = dicts.part_order()
+        except Exception:
+            part_order = []
+    if part_order:
+        idx = {p: i for i, p in enumerate(part_order)}
+        order.sort(key=lambda p: (idx.get(p, len(part_order)),))   # 持久化序在前, 序外保首现序(稳定)
     nested = [parts[p] for p in order]
     ordered = [m for p in order for m in src[p]]
     return nested, ordered

@@ -65,3 +65,12 @@ def test_add_supplier去重(tmp_path, monkeypatch):
     dicts.add_supplier("新供应商")
     dicts.add_supplier("新供应商")
     assert dicts.supplier_history().count("新供应商") == 1
+
+
+def test_order_parts按持久化序():
+    assert dicts.order_parts(["锡", "导线", "X"], ["导线", "锡"]) == ["导线", "锡", "X"]
+
+
+def test_set_part_order去重保序(tmp_path, monkeypatch):
+    monkeypatch.setattr(dicts, "DATA", str(tmp_path))
+    assert dicts.set_part_order(["导线", "锡", "导线", " "]) == ["导线", "锡"]
