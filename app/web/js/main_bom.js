@@ -135,17 +135,25 @@ function card(i, dupOf) {
     ${m.手补 ? '<div class="manual-tag">手动补 · 无MSDS</div>' : ""}
     ${dupOf[i] !== undefined ? '<div class="dup-tag">⚠ 同名材质重复?<button data-merge="' + dupOf[i] + '">合并</button> <button data-keepdup="' + dupOf[i] + '">都保留</button></div>' : ""}
     <div class="mat-row">
+      ${verifyBtn(i, m, open)}
       <input type="checkbox" data-sel="${i}">
       <input class="inp matname-in" data-mat="${i}" value="${esc(m.材质)}" title="原文:${esc(m.材质原文) || "—"} · 改为标准名→自动出类别/零件" placeholder="材质(标准名)">
       <select class="inp part-sel ${m.零件 ? "" : "need"}" data-part="${i}">${partOpts}</select>
       <select class="inp ${m.材质类别 ? "" : "need"}" data-cat="${i}">${catOpts}</select>
       <span class="pill">成分${(m.成份 || []).length}${noCas ? `·⚠无CAS${noCas}` : ""}${reasons.length ? "·⚠" + reasons.length : ""}</span>
-      <label class="chk"><input type="checkbox" data-chk="${i}" ${m.已核对 ? "checked" : ""} ${m.豁免 ? "disabled" : ""}> 已核对</label>
       <button class="exbtn" data-exempt="${i}">${m.豁免 ? "取消豁免" : "豁免"}</button>
-      <button class="expbtn" data-exp="${i}">${open ? "收起▴" : "成分▾"}</button>
     </div>
     ${open ? block(i, reasons) : ""}
   </div>`;
+}
+
+function verifyBtn(i, m, open) {
+  // 核对三态机(左侧): 未核对→[核对](一击展开成分) ; 展开未通过→[核对通过✓](再击通过) ; 已核对→[✓已通过](击=取消改)
+  if (m.豁免) return `<button class="verifybtn" data-vs="exempt" disabled>豁免</button>`;
+  const vs = m.已核对 ? "passed" : (open ? "ready" : "idle");
+  const label = { idle: "核对 ▾", ready: "核对通过 ✓", passed: "✓ 已通过" }[vs];
+  const title = { idle: "点击展开成分核对", ready: "再点一次=核对通过", passed: "已通过 · 点击取消并修改" }[vs];
+  return `<button class="verifybtn" data-verify="${i}" data-vs="${vs}" title="${title}">${label}</button>`;
 }
 
 function block(i, reasons) {
@@ -154,7 +162,7 @@ function block(i, reasons) {
     `<tr class="${c.无CAS ? "nocas" : ""}">
       <td><input class="cmp" data-c="${i}|${j}|成份名称" value="${esc(c.成份名称)}"></td>
       <td><input class="cmp" data-c="${i}|${j}|CAS" value="${esc(c.CAS)}" placeholder="${c.无CAS ? "无CAS?" : ""}"></td>
-      <td><input class="cmp" data-c="${i}|${j}|重量%" value="${esc(c["重量%"])}"></td>
+      <td><input class="cmp" data-c="${i}|${j}|重量%" value="${esc(wtDisp(c["重量%"]))}" title="输百分数, 如 99 / 0.04 / 余量"></td>
       <td><button class="exbtn" data-delc="${i}|${j}">✕</button></td></tr>`).join("");
   const ro = Object.entries(m.RoHS || {}).map(([k, v]) => {
     const bad = v && !["ND", "NA", ""].includes(String(v).toUpperCase());
@@ -197,8 +205,7 @@ function bind() {
     el.addEventListener("dragleave", () => el.classList.remove("pg-over"));
     el.addEventListener("drop", (e) => { e.preventDefault(); el.classList.remove("pg-over"); reorderParts(S.pgDrag, el.dataset.pgdrag); });
   });
-  document.querySelectorAll("[data-chk]").forEach((el) => el.onchange = () => { S.materials[+el.dataset.chk].已核对 = el.checked; save(); render(); });
-  document.querySelectorAll("[data-exp]").forEach((el) => el.onclick = () => { const i = +el.dataset.exp; S.expanded.has(i) ? S.expanded.delete(i) : S.expanded.add(i); render(); });
+  document.querySelectorAll("[data-verify]").forEach((el) => el.onclick = () => onVerify(+el.dataset.verify));
   document.querySelectorAll("[data-exempt]").forEach((el) => el.onclick = () => toggleExempt(+el.dataset.exempt));
   document.querySelectorAll("[data-merge]").forEach((el) => el.onclick = () => mergeDup(+el.dataset.merge));
   document.querySelectorAll("[data-keepdup]").forEach((el) => el.onclick = () => {});
@@ -206,6 +213,15 @@ function bind() {
   document.querySelectorAll("[data-delc]").forEach((el) => el.onclick = () => delComp(el.dataset.delc));
   document.querySelectorAll("[data-addc]").forEach((el) => el.onclick = () => addComp(+el.dataset.addc));
   $("gatebtn").onclick = onConfirm;
+}
+
+function onVerify(i) {                        // 核对三态机: 未核对→展开成分; 展开未通过→通过(收起); 已通过→取消并展开改
+  const m = S.materials[i];
+  if (m.豁免) return;
+  if (m.已核对) { m.已核对 = false; S.expanded.add(i); }                  // 取消通过→展开可改
+  else if (S.expanded.has(i)) { m.已核对 = true; S.expanded.delete(i); }   // 一击展开后再击=通过→收起清爽
+  else { S.expanded.add(i); }                                            // 首击=展开成分供核对
+  save(); render();
 }
 
 function setMat(i, val) {                    // 改材质名→反查字典自动填类别/零件(操作员未手改过的才覆盖)
@@ -228,10 +244,24 @@ function setPartSupplier(p, val) {           // 零件级供应商→写该零�
   save(); refresh();
 }
 
+function wtDisp(v) {                          // 存的是小数占比→按百分数显示(0.99→"99",0.0003→"0.03"); 余量/<x原样
+  const s = String(v == null ? "" : v).trim();
+  if (!s || s === "余量" || /^[<≤＜>≥＞]/.test(s)) return s;
+  const n = parseFloat(s);
+  return isNaN(n) ? s : String(+(n * 100).toPrecision(6));
+}
+
+function wtParse(s) {                         // 操作员输的百分数→存回小数占比(99→"0.99"); 余量/<x原样
+  s = String(s || "").trim();
+  if (!s || s === "余量" || /^[<≤＜>≥＞]/.test(s)) return s;
+  const n = parseFloat(s.replace("%", ""));
+  return isNaN(n) ? s : String(+(n / 100).toPrecision(6));
+}
+
 function editComp(token, val) {
   const [i, j, field] = token.split("|");
   const c = S.materials[+i].成份[+j];
-  c[field] = val.trim();
+  c[field] = (field === "重量%") ? wtParse(val) : val.trim();   // 重量%输的是百分数→存小数占比(与材质表口径一致)
   if (field === "CAS") c.无CAS = !c.CAS || ["/", "-"].includes(c.CAS);
   save(); render();
 }
