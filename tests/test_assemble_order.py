@@ -6,7 +6,19 @@ import sys
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 sys.path.insert(0, ROOT)
 
-from hitl.assemble_order import count_specs_by_sheet
+from hitl.assemble_order import count_specs_by_sheet, dims_from_stage1
+
+
+def test_dims_from_stage1_无豁免全取():
+    s1 = {"dimensions": [{"中心": 470, "上": 8, "下": 8}, {"中心": 98, "上": 5, "下": 5}]}
+    assert dims_from_stage1(s1) == [(470, 8, 8), (98, 5, 5)]
+
+
+def test_dims_from_stage1_豁免跳过不写():
+    s1 = {"dimensions": [{"中心": 470, "上": 8, "下": 8}, {"中心": 98, "上": 5, "下": 5},
+                         {"中心": 1.5, "上": 0.5, "下": 0.5}],
+          "exemptions": [{"序号": 1}]}                  # 豁免第2个尺寸(98)
+    assert dims_from_stage1(s1) == [(470, 8, 8), (1.5, 0.5, 0.5)]   # 98 跳过不写FAI
 
 
 def test_count_specs_by_sheet():

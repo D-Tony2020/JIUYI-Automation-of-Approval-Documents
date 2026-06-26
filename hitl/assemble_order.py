@@ -77,6 +77,13 @@ def assemble(stage2_bom, drawing_meta, dimensions, materials_dir, drawing_pdf, o
             "by_sheet": count_specs_by_sheet(specs)}
 
 
+def dims_from_stage1(s1):
+    """stage1 → FAI dims [(中心,上,下)], 跳过①豁免的尺寸(断点2: 豁免尺寸不写FAI规格)。"""
+    exempt = {e.get("序号") for e in (s1.get("exemptions") or [])}
+    return [(d.get("中心"), d.get("上"), d.get("下"))
+            for i, d in enumerate(s1.get("dimensions") or []) if i not in exempt]
+
+
 def assemble_job(job, blank=BLANK):
     """从 .work/orders/<job> 现场读 stage3/stage1/photos → 装配终态承认书。供导出端点(子进程)调。"""
     from app import state                       # 延迟导入避免循环
@@ -85,7 +92,7 @@ def assemble_job(job, blank=BLANK):
         return {"ok": False, "err": "无 BOM/文件树数据(先完成③④)"}
     s1 = state.load_json(job, "stage1_drawing.json", {})
     meta = {"名称": s1.get("名称") or "", "品号": s1.get("品号", ""), "版本": s1.get("版本", "")}
-    dims = [(d.get("中心"), d.get("上"), d.get("下")) for d in (s1.get("dimensions") or [])]
+    dims = dims_from_stage1(s1)
     photos = [os.path.join(state.photos_dir(job), p) for p in state.photos_list(job)]
     code = meta["品号"] or job
     outdir = os.path.join(ROOT, "产出留档", "导出", code)
