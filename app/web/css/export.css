@@ -1,0 +1,32 @@
+/* M2.5 ⑤照片+导出 增量(app.css/bom.css 之后) */
+.step.done { background: #d1fae5; color: #065f46; }
+.exp-ws { flex-direction: column; overflow-y: auto; padding: 10px 16px; gap: 12px; }
+.exp-sec { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; }
+.sec-head { font-size: 13px; font-weight: bold; color: #374151; margin: 6px 0; }
+.sec-head small { font-weight: normal; color: #9ca3af; }
+
+/* 照片区 */
+.photo-drop { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 12px; min-height: 90px; }
+.photo-drop.drag-over { border-color: #0284c7; background: #dbeafe; }
+.photo-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.photo-thumb { position: relative; width: 120px; height: 90px; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; background: #f9fafb; }
+.photo-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.photo-thumb .x { position: absolute; top: 2px; right: 2px; border: none; background: rgba(0,0,0,.5); color: #fff; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-size: 12px; line-height: 1; }
+.photo-actions { display: flex; align-items: center; gap: 12px; }
+.uploadbtn { display: inline-block; font-size: 13px; padding: 5px 12px; background: #2563eb; color: #fff; border-radius: 5px; cursor: pointer; }
+.drag-hint { color: #9ca3af; font-size: 12px; padding: 16px; text-align: center; }
+
+/* 软预警 + 已知悉 */
+.warn-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+.warn-item { display: flex; align-items: center; gap: 7px; font-size: 13px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 5px; padding: 5px 9px; cursor: pointer; }
+.warn-item.acked { background: #f3f4f6; border-color: #e5e7eb; color: #9ca3af; }
+.warn-item .warn-type { font-size: 11px; background: #f59e0b; color: #fff; padding: 1px 7px; border-radius: 9px; }
+.warn-item em { margin-left: auto; font-style: normal; font-size: 11px; color: #6b7280; }
+.all-ok { color: #16a34a; font-size: 13px; padding: 4px; }
+
+/* 溯源表 */
+.trace-wrap { overflow-x: auto; }
+table.trace { border-collapse: collapse; width: 100%; font-size: 12px; }
+table.trace th, table.trace td { border: 1px solid #e5e7eb; padding: 3px 8px; text-align: left; }
+table.trace th { background: #f9fafb; color: #6b7280; }
+.gatebtn { background: #16a34a; }

@@ -93,3 +93,35 @@ def validate_filetree(body):
         if not _msds_of(m) and not m.get("豁免"):
             missing.append(f"{名}缺MSDS(可豁免)")
     return missing
+
+
+def _has_file(m, typ):
+    fz = m.get("files") or {}
+    v = fz.get(typ)
+    return bool(v if isinstance(v, str) else (v or []))
+
+
+def export_preflight(stage3, photos_count):
+    """⑤导出预检(M2.5, **全软不硬拦**): 照片/MSDS/第三方报告/待拖 缺 → 软预警; trace 溯源(含报告日期)。
+
+    老板决: 不做有效期判定(只在 trace 显报告日期); 全软(操作员勾已知悉即可导出)。
+    """
+    mats = stage3.get("materials") or []
+    warnings = []
+    if photos_count < 2:
+        warnings.append({"类型": "照片", "文案": f"样品照片仅 {photos_count} 张（建议 ≥2）"})
+    for i, m in enumerate(mats):
+        名 = (m.get("材质") or "").strip() or f"材质{i + 1}"
+        if m.get("豁免"):
+            continue
+        if not _has_file(m, "MSDS"):
+            warnings.append({"类型": "MSDS", "文案": f"{名} 无 MSDS"})
+        if not (_has_file(m, "RoHS") or _has_file(m, "REACH") or _has_file(m, "SVHC")):
+            warnings.append({"类型": "第三方报告", "文案": f"{名} 无 RoHS/REACH 报告"})
+    unl = len(stage3.get("unlinked_files") or [])
+    if unl:
+        warnings.append({"类型": "待拖", "文案": f"还有 {unl} 份认不准报告未归位（确认环②）"})
+    trace = [{"零件": m.get("零件", ""), "材质": m.get("材质", ""),
+              "报告编号": m.get("报告编号", ""), "报告日期": m.get("报告日期", ""),
+              "供应商": m.get("供应商", "")} for m in mats]
+    return {"warnings": warnings, "trace": trace}

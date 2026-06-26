@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>⑤ 样品照片 + 总装导出</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/bom.css">
+  <link rel="stylesheet" href="css/export.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="steps">
+      <span class="step done">①核对图纸</span><span class="step done">②选型</span>
+      <span class="step done">③BOM脊柱</span><span class="step done">④文件树</span><span class="step active">⑤照片+导出</span>
+    </div>
+    <div class="boundary">贴样品照片（2–4 张，剪贴板粘贴或选文件）· 看溯源与软预警 · 总装导出终态承认书</div>
+    <div class="dwgname" id="dwgname"></div>
+  </header>
+
+  <div class="busy" id="busy" style="display:none"></div>
+
+  <main class="workspace exp-ws" id="workspace">
+    <section class="exp-sec">
+      <div class="sec-head">① 样品照片 <small id="photohint">建议 2–4 张；竖照上排横照下排，自动保宽高比</small></div>
+      <div class="photo-drop" id="photodrop" tabindex="0">
+        <div id="photogrid" class="photo-grid"></div>
+        <div class="photo-actions">
+          <label class="uploadbtn">选择照片<input type="file" id="photofile" accept="image/*" multiple hidden></label>
+          <span class="tip">或在此区域 Ctrl+V 粘贴微信收的图</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="exp-sec">
+      <div class="sec-head">② 导出前自检（全软 · 勾"已知悉"留痕，不阻断）</div>
+      <div id="warnings" class="warn-list"></div>
+      <div class="sec-head">溯源面板（每材质报告号/日期/供应商）</div>
+      <div id="trace" class="trace-wrap"></div>
+    </section>
+  </main>
+
+  <footer class="gatebar" id="gatebar">
+    <div class="summary" id="summary"></div>
+    <button class="gatebtn" id="gatebtn">总装导出承认书 →</button>
+  </footer>
+
+  <script type="module" src="js/main_export.js"></script>
+</body>
+</html>

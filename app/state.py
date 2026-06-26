@@ -38,6 +38,19 @@ def drawing_pdf(job):
     return pdfs[0] if pdfs else None
 
 
+def photos_dir(job):
+    d = os.path.join(order_dir(job), "photos")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def photos_list(job):
+    """本单已上传样品照片文件名(排序)。"""
+    import glob
+    return sorted(os.path.basename(p) for p in glob.glob(os.path.join(photos_dir(job), "*"))
+                  if os.path.isfile(p))
+
+
 def save_json(job, name, data):
     with open(os.path.join(order_dir(job), name), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)

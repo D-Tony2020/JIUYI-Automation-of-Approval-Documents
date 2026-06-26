@@ -75,3 +75,42 @@ export async function filetreeConfirm(job, payload) {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
   });
 }
+
+// ── M2.5 ⑤照片 + 总装导出 ──────────────────────────────────
+export async function uploadPhotos(job, files) {
+  const fd = new FormData();
+  for (const f of files) fd.append("files", f);
+  return _json(`/api/order/${job}/upload-photos`, { method: "POST", body: fd });
+}
+
+export async function listPhotos(job) {
+  return _json(`/api/order/${job}/photos`);
+}
+
+export async function deletePhoto(job, name) {
+  return _json(`/api/order/${job}/photos/${encodeURIComponent(name)}`, { method: "DELETE" });
+}
+
+export async function exportPreflight(job) {
+  return _json(`/api/export/${job}/preflight`);
+}
+
+export async function exportAcknowledge(job, acknowledged) {
+  return _json(`/api/export/${job}/acknowledge`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acknowledged }),
+  });
+}
+
+export async function exportAssemble(job, acknowledged) {
+  return _json(`/api/export/${job}/assemble`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acknowledged }),
+  });
+}
+
+export function downloadUrl(job) {
+  return `/api/export/${job}/download`;
+}
+
+export function photoUrl(job, name) {
+  return `/api/order/${job}/photos/raw?name=${encodeURIComponent(name)}`;  // 预览(若需), 当前用本地 blob 预览
+}

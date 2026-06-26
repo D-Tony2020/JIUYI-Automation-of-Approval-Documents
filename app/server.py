@@ -3,14 +3,17 @@
 
 端点全部薄封装、复用现有业务核心。前端静态资源挂在 / (放最后, 否则吞 /api)。
 """
+import datetime
+import json
 import os
+import subprocess
 import sys
 import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))   # HITL 根
 
 from fastapi import FastAPI, UploadFile, File, Request, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 import fitz
 
@@ -206,6 +209,100 @@ async def filetree_confirm(job: str, request: Request):
     proj["step"] = 5
     state.save_json(job, "project.json", proj)
     return {"ok": True, "step": 5}
+
+
+# ── M2.5 ⑤照片 + 总装导出 ──────────────────────────────────
+@app.post("/api/order/{job}/upload-photos")
+async def upload_photos(job: str, files: List[UploadFile] = File(...)):
+    """上传样品照片(剪贴板粘贴/文件选择, 2–4 张) → 存 photos/。"""
+    pdir = state.photos_dir(job)
+    for f in files:
+        with open(os.path.join(pdir, f.filename or "photo.png"), "wb") as out:
+            out.write(await f.read())
+    return {"photos": state.photos_list(job)}
+
+
+@app.get("/api/order/{job}/photos")
+def list_photos(job: str):
+    """已传样品照片(断点续做)。"""
+    return {"photos": state.photos_list(job)}
+
+
+@app.get("/api/order/{job}/photos/raw")
+def photo_raw(job: str, name: str):
+    """取某张照片原图(刷新后缩略图预览用)。"""
+    p = os.path.join(state.photos_dir(job), os.path.basename(name))
+    if not os.path.exists(p):
+        raise HTTPException(404, "无此照片")
+    return FileResponse(p)
+
+
+@app.delete("/api/order/{job}/photos/{name}")
+def delete_photo(job: str, name: str):
+    """删某张照片(重传)。"""
+    p = os.path.join(state.photos_dir(job), os.path.basename(name))
+    if os.path.exists(p):
+        os.remove(p)
+    return {"photos": state.photos_list(job)}
+
+
+@app.get("/api/export/{job}/preflight")
+def export_preflight_ep(job: str):
+    """导出预检(全软, 零 COM 快): 软预警 + 溯源(含报告日期)。"""
+    s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json", {})
+    return rules.export_preflight(s, len(state.photos_list(job)))
+
+
+@app.post("/api/export/{job}/acknowledge")
+async def export_acknowledge(job: str, request: Request):
+    """存已知悉项(防刷新丢)。"""
+    body = await request.json()
+    proj = state.load_json(job, "project.json", {"job": job})
+    proj["acknowledged"] = body.get("acknowledged", [])
+    state.save_json(job, "project.json", proj)
+    return {"ok": True}
+
+
+@app.post("/api/export/{job}/assemble")
+async def export_assemble(job: str, request: Request):
+    """段二总装(子进程跑 COM/WPS + 超时) → 终态承认书。落档 + 开目录 + 留痕 project.json。"""
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    hitl_root = os.path.dirname(APP_DIR)
+    try:
+        r = subprocess.run([sys.executable, "-m", "hitl.assemble_order", job],
+                           cwd=hitl_root, capture_output=True, text=True, timeout=300, encoding="utf-8")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "装配超时(WPS 可能卡), 请重试")
+    out = r.stdout or ""
+    mk = "@@RESULT@@"
+    res = json.loads(out[out.rindex(mk) + len(mk):].strip()) if mk in out else {"ok": False, "err": (r.stderr or "")[-200:]}
+    if not res.get("ok"):
+        raise HTTPException(500, "装配失败: " + str(res.get("err", "?")))
+    proj = state.load_json(job, "project.json", {"job": job})
+    proj.update({"step": 5, "exported": True, "out_path": res.get("out"), "ole": res.get("ole"),
+                 "exported_at": datetime.datetime.now().isoformat(timespec="seconds"),
+                 "acknowledged": body.get("acknowledged", proj.get("acknowledged", []))})
+    state.save_json(job, "project.json", proj)
+    try:
+        os.startfile(os.path.dirname(res["out"]))   # Windows 开输出目录
+    except Exception:
+        pass
+    return res
+
+
+@app.get("/api/export/{job}/download")
+def export_download(job: str):
+    """下载已导出的终态承认书 xlsx。"""
+    proj = state.load_json(job, "project.json", {})
+    p = proj.get("out_path")
+    if not p or not os.path.exists(p):
+        raise HTTPException(404, "尚未导出")
+    return FileResponse(p, filename=os.path.basename(p),
+                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 app.mount("/", StaticFiles(directory=WEB, html=True), name="web")   # 前端静态, 必须最后挂
