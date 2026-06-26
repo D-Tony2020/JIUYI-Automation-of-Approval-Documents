@@ -71,3 +71,25 @@ def validate_bom(body):
         if not m.get("已核对") and not m.get("豁免"):
             missing.append(f"{名}未核对")
     return missing
+
+
+def _msds_of(m):
+    fz = m.get("files") or {}
+    v = fz.get("MSDS")
+    return v if isinstance(v, str) else (v[0] if v else "")
+
+
+def validate_filetree(body):
+    """确认环②放行门(M2.4): 每材质 MSDS 必有(或豁免); RoHS/REACH 缺软放(不拦)。空=放行。
+
+    MSDS=材质自身成分源, 必须有; 第三方报告(RoHS/REACH)缺可勾豁免(符合"允许豁免"设计,
+    生久追责时自证)。与前端 treestate.filetreeMissing 同口径。"""
+    missing = []
+    mats = body.get("materials") or []
+    if not mats:
+        return ["无材质(先完成BOM脊柱)"]
+    for i, m in enumerate(mats):
+        名 = (m.get("材质") or "").strip() or f"材质{i + 1}"
+        if not _msds_of(m) and not m.get("豁免"):
+            missing.append(f"{名}缺MSDS(可豁免)")
+    return missing

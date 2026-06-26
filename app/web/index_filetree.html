@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>确认环② 文件树</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/bom.css">
+  <link rel="stylesheet" href="css/filetree.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="steps">
+      <span class="step done">①核对图纸</span><span class="step done">②选型</span>
+      <span class="step done">③BOM脊柱</span><span class="step active">④文件树</span><span class="step">⑤照片</span>
+    </div>
+    <div class="boundary">本环确认证据文件落点（每材质 K MSDS / L REACH·SVHC / Y RoHS）· 拖认不准的报告归位 · 缺可豁免</div>
+    <div class="dwgname" id="dwgname"></div>
+  </header>
+
+  <div class="busy" id="busy" style="display:none"></div>
+
+  <main class="workspace ft-ws" id="workspace">
+    <div class="ft-left">
+      <div class="toolbar" id="toolbar"></div>
+      <div class="bomtable" id="bomtable"></div>
+    </div>
+    <aside class="ft-right">
+      <div class="unl-head">认不准报告 · 拖到对应材质的证据列</div>
+      <div class="unlinked-zone" id="unlinked"></div>
+    </aside>
+  </main>
+
+  <footer class="gatebar" id="gatebar">
+    <div class="summary" id="summary"></div>
+    <button class="gatebtn" id="gatebtn" disabled>放置已确认，进入第5步 →</button>
+  </footer>
+
+  <script type="module" src="js/main_filetree.js"></script>
+</body>
+</html>

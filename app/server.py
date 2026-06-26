@@ -172,4 +172,40 @@ async def bom_save(job: str, request: Request):
     return {"ok": True}
 
 
+# ── M2.4 确认环② 文件树 ────────────────────────────────────
+@app.get("/api/filetree/{job}/state")
+def filetree_state(job: str):
+    """读放置计划现场(断点续做): 优先 stage3_filetree, 回退 stage2_bom(含 files/unlinked_files)。"""
+    s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json")
+    if not s:
+        raise HTTPException(404, "本单未完成BOM脊柱")
+    return s
+
+
+@app.post("/api/filetree/{job}/save")
+async def filetree_save(job: str, request: Request):
+    """中途草稿存(不校验), 防刷新丢拖拽纠正。"""
+    body = await request.json()
+    s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json", {})
+    s.update(body)
+    state.save_json(job, "stage3_filetree.json", s)
+    return {"ok": True}
+
+
+@app.post("/api/filetree/{job}/confirm")
+async def filetree_confirm(job: str, request: Request):
+    """落放置计划, 推进第5步。权威校验(每材质 MSDS 必有或豁免)。"""
+    body = await request.json()
+    missing = rules.validate_filetree(body)
+    if missing:
+        raise HTTPException(422, "文件树未齐: " + " · ".join(missing))
+    s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json", {})
+    s.update(body); s["confirmed_filetree"] = True
+    state.save_json(job, "stage3_filetree.json", s)
+    proj = state.load_json(job, "project.json", {"job": job})
+    proj["step"] = 5
+    state.save_json(job, "project.json", proj)
+    return {"ok": True, "step": 5}
+
+
 app.mount("/", StaticFiles(directory=WEB, html=True), name="web")   # 前端静态, 必须最后挂

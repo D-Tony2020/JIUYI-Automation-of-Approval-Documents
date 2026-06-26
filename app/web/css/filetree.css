@@ -1,0 +1,35 @@
+/* M2.4 确认环②文件树增量(app.css/bom.css 之后加载; 状态色继承 .card[data-st] / .step.done) */
+.step.done { background: #d1fae5; color: #065f46; }
+
+/* 两栏: 左材质树 + 右待拖池 */
+.ft-ws { flex-direction: row; gap: 12px; padding: 8px 16px; overflow: hidden; align-items: stretch; }
+.ft-left { flex: 1; overflow-y: auto; min-width: 0; }
+.ft-right { width: 280px; flex: 0 0 280px; display: flex; flex-direction: column; border-left: 1px solid #e5e7eb; padding-left: 12px; }
+.unl-head { font-size: 12px; color: #b45309; font-weight: bold; padding: 6px 0; }
+.unlinked-zone { flex: 1; overflow-y: auto; border: 2px dashed #f59e0b; background: #fffbeb; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; align-content: flex-start; }
+.unlinked-zone.drag-over { border-color: #0284c7; background: #dbeafe; }
+.drag-hint { color: #9ca3af; font-size: 12px; text-align: center; padding: 16px 4px; }
+
+.toolbar { padding: 6px 0; }
+
+/* 材质卡 + 三列证据槽 */
+.mat-card { padding: 6px 8px; margin-bottom: 8px; }
+.mat-card .mat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.mat-card .matname { font-weight: 600; font-size: 13px; min-width: 120px; }
+.mat-card.exempt .matname { text-decoration: line-through; color: #9ca3af; }
+.slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.slot { border: 1px solid #e5e7eb; border-radius: 5px; padding: 4px 6px; min-height: 48px; background: #fff; }
+.slot[data-st=ok] { border-color: #16a34a; background: #f0fdf4; }
+.slot[data-st=todo] { border: 1px dashed #cbd5e1; background: #f9fafb; }
+.slot[data-st=exempt] { opacity: .55; }
+.slot.drag-over { border: 2px solid #0284c7 !important; background: #dbeafe; }
+.col-label { font-size: 10px; color: #9ca3af; margin-bottom: 3px; }
+.emptyslot { font-size: 11px; color: #cbd5e1; }
+
+/* 文件 chip(可拖) */
+.filechip { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; background: #eef2ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; margin: 2px 0; cursor: grab; max-width: 100%; }
+.filechip.unl { background: #fef3c7; color: #92400e; }
+.filechip em { font-style: normal; font-size: 10px; opacity: .7; }
+.filechip .x { border: none; background: transparent; color: inherit; cursor: pointer; font-size: 13px; line-height: 1; padding: 0 0 0 2px; }
+.filechip:active { cursor: grabbing; }
+.exbtn { font-size: 11px; padding: 2px 8px; border: 1px solid #d1d5db; background: #fff; border-radius: 4px; cursor: pointer; }

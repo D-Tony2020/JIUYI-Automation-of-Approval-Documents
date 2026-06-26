@@ -58,3 +58,20 @@ export async function bomConfirm(job, payload) {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
   });
 }
+
+// ── M2.4 确认环② 文件树 ────────────────────────────────────
+export async function filetreeState(job) {
+  return _json(`/api/filetree/${job}/state`);
+}
+
+export async function filetreeSave(job, payload) {
+  return _json(`/api/filetree/${job}/save`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
+}
+
+export async function filetreeConfirm(job, payload) {
+  return _json(`/api/filetree/${job}/confirm`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+  });
+}
