@@ -57,9 +57,8 @@ def stage2_to_nested_bom(materials):
                         "材质类别": (m.get("材质类别") or "").strip(), "materials": []}
             src[p] = []
             order.append(p)
-        first = len(parts[p]["materials"]) == 0
         parts[p]["materials"].append({
-            "材质类别": (m.get("材质类别", "") if first else ""),
+            "材质类别": m.get("材质类别", ""),       # 不坍缩: 每材质保自己的类别(D列由 inject_data 按类别组合并)
             "材质": m.get("材质", ""),
             "blocks": [{"成份": m.get("成份", []), "RoHS": m.get("RoHS", {}),
                         "报告编号": m.get("报告编号", ""), "报告日期": m.get("报告日期", "")}],

@@ -178,7 +178,6 @@ def to_inject_bom(materials):
             parts[p] = {"零件": p, "供应商": (m.get("供应商") or "").strip(),
                         "材质类别": (m.get("材质类别") or "").strip(), "materials": []}
             order.append(p)
-        first_of_part = len(parts[p]["materials"]) == 0   # 材质类别零件级合并: 只首材质写, 余空
         blks = sorted(m["blocks"], key=lambda b: b["_first"])
         comps = sorted(m["components"], key=lambda c: c["_row"])
         out_blocks = []
@@ -192,7 +191,7 @@ def to_inject_bom(materials):
                 "报告编号": blk.get("报告号", ""),
                 "报告日期": blk.get("报告日期", ""),
             })
-        parts[p]["materials"].append({"材质类别": (m["材质类别"] if first_of_part else ""),
+        parts[p]["materials"].append({"材质类别": m["材质类别"],   # 每材质保自己类别(D按类别组合并, 不坍缩)
                                        "材质": m["材质"], "blocks": out_blocks})
     return [parts[p] for p in order]
 

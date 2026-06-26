@@ -249,6 +249,7 @@ def inject_data(ws, bom, start_row=DATA_TOP):
     """按 compute_layout 的结构三层嵌套注入(零件A/B/C → 材质D/E/F → 报告块K..AD)。返回数据末行。"""
     layout = compute_layout(bom, start_row)
     for P in layout["parts"]:
+        cat_runs = []      # 材质类别(D)按"零件内连续同类别"组合并: [[类别, first_row, last_row]]
         for M in P["materials"]:
             for B in M["blocks"]:
                 block, bf, be = B["block"], B["first"], B["last"]
@@ -271,12 +272,20 @@ def inject_data(ws, bom, start_row=DATA_TOP):
                     for c in BLOCK_MERGE_COLS:
                         ws.merge_cells(start_row=bf, start_column=c, end_row=be, end_column=c)
             mat, mf, me = M["material"], M["first"], M["last"]
-            ws.cell(mf, 4, mat.get("材质类别", ""))
-            ws.cell(mf, 5, mat.get("材质", ""))
+            ws.cell(mf, 5, mat.get("材质", ""))      # E材质/F重量 按材质
             ws.cell(mf, 6, "/")
             if me > mf:
-                for c in MAT_MERGE_COLS:
+                for c in (5, 6):
                     ws.merge_cells(start_row=mf, start_column=c, end_row=me, end_column=c)
+            cat = (mat.get("材质类别") or "").strip()    # 累计类别组(连续同类别合并 D)
+            if cat_runs and cat_runs[-1][0] == cat:
+                cat_runs[-1][2] = me
+            else:
+                cat_runs.append([cat, mf, me])
+        for cat, cf, cl in cat_runs:                 # 写 D 材质类别 + 按组合并(一零件可多类别)
+            ws.cell(cf, 4, cat)
+            if cl > cf:
+                ws.merge_cells(start_row=cf, start_column=4, end_row=cl, end_column=4)
         part, pf, pe = P["part"], P["first"], P["last"]
         ws.cell(pf, 1, P["idx"])
         ws.cell(pf, 2, part.get("零件", ""))

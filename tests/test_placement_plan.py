@@ -39,10 +39,10 @@ def test_嵌套分组保序():
     assert [m["材质"] for m in ordered] == ["PVC", "镀锡铜", "磷铜"]
 
 
-def test_材质类别零件级合并():
+def test_材质类别每材质保留不坍缩():
     nested, _ = stage2_to_nested_bom(STAGE2["materials"])
     导线 = nested[0]["materials"]
-    assert 导线[0]["材质类别"] == "线材" and 导线[1]["材质类别"] == ""   # 首材质写, 余空
+    assert 导线[0]["材质类别"] == "线材" and 导线[1]["材质类别"] == "线材"   # 不坍缩: 各保自己类别
     assert nested[1]["materials"][0]["材质类别"] == "端子"
 
 
