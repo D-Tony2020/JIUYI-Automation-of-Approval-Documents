@@ -40,20 +40,21 @@ def normalize_supplier(raw: str) -> str:
 
 
 def normalize_weight(raw: str) -> str:
-    """99.3wt% / 99.3% / 99.3 → 0.993；'<3'、'余量' 原样。"""
+    """成分含量原文 → 小数占比(供材质表 '0.00%' 单元格渲染成百分数, 与golden存法一致)。
+    99.3wt%/99.3%/99.3 → 0.993; 范围 0.03-0.04% → 取中值 0.035% → 0.00035(对齐golden, 非取低端);
+    '余量'/balance → '余量'; '<0.005%' → 原样(golden亦原样)。"""
     if raw is None:
         return ""
     s = str(raw).strip()
     if "余量" in s or s.lower() in ("balance", "bal"):
         return "余量"
-    if s.startswith("<") or s.startswith("≤"):
+    if s and s[0] in "<≤＜>≥＞":
         return s.replace(" ", "")
-    m = re.search(r"[-+]?\d*\.?\d+", s)
-    if not m:
+    nums = re.findall(r"\d*\.?\d+", s)              # 无符号: 范围 '0.03-0.04' 里的 '-' 当分隔, 不当负号
+    if not nums:
         return s
-    # MSDS 成分列恒为百分数(wt%)，一律 ÷100 化为小数(与承认书口径一致)
-    val = float(m.group(0)) / 100.0
-    # 去掉浮点尾巴
+    # MSDS 成分列恒为百分数(wt%): 范围取中, 一律 ÷100 化为小数占比
+    val = sum(float(n) for n in nums) / len(nums) / 100.0
     return ("%f" % val).rstrip("0").rstrip(".")
 
 

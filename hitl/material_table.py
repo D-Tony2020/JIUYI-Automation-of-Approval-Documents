@@ -68,23 +68,31 @@ def normalize_supplier(raw):
     return raw
 
 
+def _put_weight(ws, rr, v):
+    """重量%写入材质表 J 列: 数值→float+'0.00%'格式(渲染成百分数, 否则文本裸显小数像被多除100);
+    '余量'/'<0.005%' 等→字符串原样(与golden一致)。"""
+    s = str(v).strip()
+    try:
+        ws.cell(rr, 10, float(s))
+        ws.cell(rr, 10).number_format = "0.00%"
+    except (ValueError, TypeError):
+        ws.cell(rr, 10, v)
+
+
 def normalize_weight(raw):
-    """单位嗅探(签认): 带%或>1→÷100; ≤1且无%→已是小数不除; <3/>x/余量 原样。"""
+    """成分含量原文 → 小数占比(与 spike/assemble.normalize_weight 统一; 供 '0.00%' 单元格渲染成百分数)。
+    范围 0.03-0.04% → 取中 0.035% → 0.00035(对齐golden); 余量/balance→'余量'; <0.005%→原样。"""
     if raw is None:
         return ""
     s = str(raw).strip()
     if "余量" in s or s.lower() in ("balance", "bal"):
         return "余量"
-    if s and s[0] in "<≤>":
+    if s and s[0] in "<≤＜>≥＞":
         return s.replace(" ", "")
-    has_pct = "%" in s
-    m = re.search(r"[-+]?\d*\.?\d+", s)
-    if not m:
+    nums = re.findall(r"\d*\.?\d+", s)              # 无符号: 范围内 '-' 当分隔不当负号
+    if not nums:
         return s
-    val = float(m.group(0))
-    if has_pct or val > 1:
-        return _fmt(val / 100.0)
-    return _fmt(val)   # ≤1 且无% → 已是小数, 不再除(needs_review 另行 track)
+    return _fmt(sum(float(n) for n in nums) / len(nums) / 100.0)   # 范围取中 + 百分数→占比
 
 
 def normalize_date(raw):
@@ -259,7 +267,7 @@ def inject_data(ws, bom, start_row=DATA_TOP):
                     # G列成份名: 按(材质,CAS)查词表→承认书标准短名(B原文/MSDS全称→标准, 查不到留原文)
                     ws.cell(rr, 7, normalize_component_name(材, comp.get("CAS", ""), comp.get("成份名称", "")))
                     ws.cell(rr, 8, comp.get("CAS", ""))
-                    ws.cell(rr, 10, comp.get("重量%", ""))
+                    _put_weight(ws, rr, comp.get("重量%", ""))
                 for k in ROHS_KEYS:
                     ws.cell(bf, ROHS_COL[k], block.get("RoHS", {}).get(k, ""))
                 ws.cell(bf, 23, block.get("报告日期", ""))
