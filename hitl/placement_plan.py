@@ -143,11 +143,62 @@ def _part_category(materials):
     return {p: "".join(cs) for p, cs in cat.items()}
 
 
-def pile_specs(materials_dir, sheet_names, drawing_pdf=None, materials=None, part_order=None):
+def _infer_part(base, materials):
+    """单报告→零件(复用 file_link 内容/颜色匹配)。型号码命名(1061/盐雾)推不出→空。"""
+    if not materials:
+        return ""
+    try:
+        from hitl.file_link import suggest_for
+        return ((suggest_for(base, "其他", materials)) or {}).get("零件", "")
+    except Exception:
+        return ""
+
+
+def assign_parts_for(report_bases, materials, part_order):
+    """一张横排表的报告 → {文件: 零件}: 先内容匹配能推断的, 余者补剩余采购部件(按零件序)。
+    供 pile_specs 落标签/排序 + grid_reports 预填(④操作员归属选择的默认值)。
+    """
+    partcat = _part_category(materials or [])
+    parts_seq = [p for p in (part_order or []) if p in partcat]
+    out, used, pending = {}, set(), []
+    for b in report_bases:
+        p = _infer_part(b, materials)
+        if p in partcat and p not in used:
+            out[b] = p; used.add(p)
+        else:
+            pending.append(b)
+    remaining = [p for p in parts_seq if p not in used]
+    for b, p in zip(pending, remaining):
+        out[b] = p
+    for b in pending[len(remaining):]:
+        out[b] = ""
+    return out
+
+
+def grid_reports(materials_dir, materials=None, part_order=None):
+    """横排表(部件承认/UL/信赖性)报告清单 + best-effort 建议零件(供④操作员归属选择, 默认预填)。
+    → [{文件, 表, 建议零件}]。
+    """
+    by = {}
+    for f in sorted(glob.glob(os.path.join(materials_dir, "*.pdf"))):
+        base = os.path.basename(f)
+        for short in route(base):
+            if short in ("部件承认", "UL", "信赖性"):
+                by.setdefault(short, []).append(base)
+    out = []
+    for short, bases in by.items():
+        auto = assign_parts_for(bases, materials, part_order)
+        for b in bases:
+            out.append({"文件": b, "表": short, "建议零件": auto.get(b, "")})
+    return out
+
+
+def pile_specs(materials_dir, sheet_names, drawing_pdf=None, materials=None, part_order=None, part_assign=None):
     """非材质级表(部件承认/UL/信赖性/包装/出货/图纸)specs: 按 route() 重路由料堆, GRID/固定位落。
 
     这些文件不在 file_link 材质链里(link 只管材质表/材质证明), 故从料堆按文件名关键词路由。
-    横排表(部件承认/UL/信赖性)按零件顺序排(每报告推断零件→part_order序), 而非文件名字母序(原乱序根因)。
+    横排表(部件承认/UL/信赖性)零件归属: 操作员④选的 part_assign 优先, 否则 best-effort 自动分配。
+    部件标签(线材/端子/套管, OLE 下方显)与排序均按归属零件。
     """
     by_short = {k: [] for k in ("部件承认", "UL", "信赖性", "包装", "出货")}
     for f in sorted(glob.glob(os.path.join(materials_dir, "*.pdf"))):
@@ -160,34 +211,19 @@ def pile_specs(materials_dir, sheet_names, drawing_pdf=None, materials=None, par
                                             "label": os.path.splitext(base)[0]})   # 标签=文件名核心(部件/零件名)
     partcat = _part_category(materials or [])                                     # 零件→部件类别标签(线材/胶座端子/套管)
     pidx = {p: i for i, p in enumerate(part_order or [])}
-    parts_seq = [p for p in (part_order or []) if p in partcat]                    # 有类别的零件(采购部件), 按序
-    def _infer_part(sp):                                                          # 报告→零件(复用file_link匹配)
-        if not materials:
-            return ""
-        try:
-            from hitl.file_link import suggest_for
-            return ((suggest_for(os.path.basename(sp["pdf"]), "其他", materials)) or {}).get("零件", "")
-        except Exception:
-            return ""
+    part_assign = part_assign or {}
     specs = []
     for short, gk in (("部件承认", "部件承认书"), ("UL", "UL证明"), ("信赖性", "信赖性")):
-        # 每报告分配零件: 先匹配能推断的, 余者补剩余采购部件(按序)→ 给"部件标签"(线材/端子/套管, 如golden)+按零件序排。
-        assigned, used = [], set()
+        bases = [os.path.basename(sp["pdf"]) for sp in by_short[short]]
+        auto = assign_parts_for(bases, materials, part_order)
         for sp in by_short[short]:
-            p = _infer_part(sp)
-            assigned.append([sp, p if (p in partcat and p not in used) else None])
-            if assigned[-1][1]:
-                used.add(p)
-        remaining = [p for p in parts_seq if p not in used]
-        ri = 0
-        for pair in assigned:
-            if pair[1] is None and ri < len(remaining):
-                pair[1] = remaining[ri]; ri += 1
-        for sp, p in assigned:
-            sp["部件标签"] = partcat.get(p, "") if p else ""                       # OLE 下方部件类别标签
-        assigned.sort(key=lambda pr: pidx.get(pr[1], len(pidx) + 1))              # 按零件序(稳定→同零件保文件名序)
+            b = os.path.basename(sp["pdf"])
+            零件 = (part_assign.get(b) or auto.get(b, "")).strip()                # ④操作员选的优先
+            sp["部件标签"] = partcat.get(零件, "")                                 # OLE 下方部件类别标签
+            sp["_零件"] = 零件
+        ordered = sorted(by_short[short], key=lambda sp: pidx.get(sp.get("_零件", ""), len(pidx) + 1))
         g = GRID[gk]
-        for (sp, _p), (L, T) in zip(assigned, grid_anchors(len(assigned), **g)):
+        for sp, (L, T) in zip(ordered, grid_anchors(len(ordered), **g)):
             sp.update(L=L, T=T, W=g["w"], H=g["h"])
             specs.append(sp)
     for short in ("包装", "出货"):
@@ -210,7 +246,8 @@ def build_specs(stage2_bom, sheet_names, materials_dir, drawing_pdf=None):
     specs, nested, ordered = material_specs(s2, materials_dir)
     part_order = [p["零件"] for p in nested]                       # 装表零件序(横排pile跟随, 与材质表同序)
     specs += pile_specs(materials_dir, sheet_names, drawing_pdf,
-                        materials=stage2_bom.get("materials", []), part_order=part_order)
+                        materials=stage2_bom.get("materials", []), part_order=part_order,
+                        part_assign=stage2_bom.get("部件归属"))     # ④操作员选的横排报告零件归属
     return specs, nested, ordered
 
 

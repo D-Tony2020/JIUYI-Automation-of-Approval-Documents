@@ -2,7 +2,7 @@
 import * as api from "./api.js";
 import { planTree, slotState, filetreeMissing, COLS } from "./treestate.js";
 
-const S = { job: null, bom: { materials: [], unlinked_files: [] }, partOrder: [], drag: null };
+const S = { job: null, bom: { materials: [], unlinked_files: [] }, partOrder: [], gridReports: [], parts: [], drag: null };
 const $ = (id) => document.getElementById(id);
 let saveTimer = null;
 
@@ -16,7 +16,9 @@ async function boot() {
   try { S.partOrder = (await api.getDict()).part_order || []; } catch { /* 默认空 */ }   // 继承③零件顺序
   try {
     const s = await api.filetreeState(job);
-    S.bom = { materials: s.materials || [], unlinked_files: s.unlinked_files || [] };
+    S.bom = { materials: s.materials || [], unlinked_files: s.unlinked_files || [], 部件归属: s.部件归属 || {} };
+    S.gridReports = s.grid_reports || [];
+    S.parts = s.parts || [];
     render();
   } catch (e) {
     $("workspace").innerHTML = `<p class='tip'>读取失败：${esc(e.message)}（请先完成 ③BOM脊柱）</p>`;
@@ -31,7 +33,7 @@ function render() {
     for (const mi of tree.parts[p]) html += matRow(tree.materials[mi]);
     html += `</div>`;
   }
-  $("bomtable").innerHTML = html || "<p class='tip'>无材质</p>";
+  $("bomtable").innerHTML = (html || "<p class='tip'>无材质</p>") + gridReportsHtml();
   renderUnlinked(tree.unlinked);
   $("toolbar").innerHTML = `<span class="tip">绿=已挂证据 · 灰虚=空槽(MSDS必补,第三方可空) · 删除线=豁免</span>`;
   bind();
@@ -52,6 +54,21 @@ function matRow(m) {
       <button class="exbtn" data-exempt="${m.idx}">${m.豁免 ? "取消豁免" : "豁免"}</button></div>
     <div class="slot-grid">${cells}</div>
   </div>`;
+}
+
+function gridReportsHtml() {
+  // 横排部件报告(部件承认/UL/信赖性)归属选择: 选零件→OLE下方部件标签(线材/端子/套管)+顺序。best-effort预填。
+  if (!S.gridReports.length) return "";
+  const tl = { 部件承认: "部件承认书", UL: "UL证明", 信赖性: "信赖性" };
+  const opts = (cur) => ['<option value="">(选零件)</option>']
+    .concat(S.parts.map((p) => `<option ${p === cur ? "selected" : ""}>${esc(p)}</option>`)).join("");
+  const rows = S.gridReports.map((g) => {
+    const cur = (S.bom.部件归属 || {})[g.文件] || g.建议零件 || "";
+    return `<div class="grid-row"><span class="gr-tag">${esc(tl[g.表] || g.表)}</span>`
+      + `<span class="gr-file" title="${esc(g.文件)}">${esc(shortName(g.文件))}</span><span class="gr-arrow">→</span>`
+      + `<select class="gr-sel" data-grpart="${esc(g.文件)}">${opts(cur)}</select></div>`;
+  }).join("");
+  return `<div class="grid-reports"><div class="gr-head">⊞ 横排部件报告归属 — 选零件定 OLE 下方标签(线材/端子/套管)与顺序；已 best-effort 预填，请核对</div>${rows}</div>`;
 }
 
 function renderUnlinked(unlinked) {
@@ -83,6 +100,11 @@ function bind() {
   document.querySelectorAll("[data-unlink]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); const [i, t, f] = el.dataset.unlink.split("|"); unlinkFile(+i, t, f); });
   document.querySelectorAll("[data-exempt]").forEach((el) => el.onclick = () => toggleExempt(+el.dataset.exempt));
   document.querySelectorAll("[data-sug]").forEach((el) => el.onclick = () => attachSuggested(+el.dataset.sug));
+  document.querySelectorAll("[data-grpart]").forEach((el) => el.onchange = () => {   // 横排报告零件归属→标签/顺序
+    S.bom.部件归属 = S.bom.部件归属 || {};
+    S.bom.部件归属[el.dataset.grpart] = el.value;
+    save();
+  });
   $("gatebtn").onclick = onConfirm;
 }
 

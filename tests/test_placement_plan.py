@@ -42,6 +42,15 @@ def test_豁免材质不进装表():
     assert len(ordered) == 2                                  # ordered 同步排除(mat_idx 不错位)
 
 
+def test_assign_parts_for分配():
+    from hitl.placement_plan import assign_parts_for
+    mats = [{"零件": "导线", "材质": "PVC", "材质类别": "线材"},
+            {"零件": "热缩管", "材质": "聚烯烃", "材质类别": "套管", "源文件": "环保热缩套管MSDS.pdf"}]
+    r = assign_parts_for(["四川领飞热缩套管承认书.pdf", "1061系列承认书.pdf"], mats, ["导线", "热缩管"])
+    assert r["四川领飞热缩套管承认书.pdf"] == "热缩管"   # 内容匹配(热缩套管token)
+    assert r["1061系列承认书.pdf"] == "导线"            # 推不出→补剩余采购部件(按序)
+
+
 def test_part_category部件类别标签():
     from hitl.placement_plan import _part_category
     mats = [{"零件": "导线", "材质类别": "线材"}, {"零件": "导线", "材质类别": "线材"},
