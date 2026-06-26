@@ -147,11 +147,19 @@ async def bom_confirm(job: str, request: Request):
         raise HTTPException(422, "BOM 脊柱未齐: " + " · ".join(missing))
     s = state.load_json(job, "stage2_bom.json", {})
     s.update(body); s["confirmed"] = True
+    # 文件↔材质链(M2.4 OLE放置据此落K/L/Y格); 认不准的报告留确认环②人工拖
+    try:
+        from hitl.file_link import link_materials
+        linked, unlinked = link_materials(state.materials_dir(job), s.get("materials", []))
+        s["materials"] = linked
+        s["unlinked_files"] = [{"文件": b, "类型": t} for b, t in unlinked]
+    except Exception:
+        pass                                     # 链失败不挡放行(M2.4 可纯人工拖)
     state.save_json(job, "stage2_bom.json", s)
     proj = state.load_json(job, "project.json", {"job": job})
     proj["step"] = 3
     state.save_json(job, "project.json", proj)
-    return {"ok": True, "step": 3}
+    return {"ok": True, "step": 3, "unlinked": len(s.get("unlinked_files", []))}
 
 
 @app.post("/api/bom/{job}/save")
