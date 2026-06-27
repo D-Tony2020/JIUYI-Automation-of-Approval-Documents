@@ -18,10 +18,19 @@
   <div class="busy" id="busy" style="display:none"></div>
 
   <div class="uploadbar" id="uploadbar">
-    <label class="uploadbtn">上传材料 PDF 堆（可多选）
+    <label class="uploadbtn">① 先传核心料 MSDS（决定 BOM，可多选）
       <input type="file" id="file" accept="application/pdf" multiple hidden>
     </label>
-    <p class="tip">上传后 qwen 读 MSDS 自动提议材质清单；你把材质归到零件、定材质类别、确认供应商、逐料核对。</p>
+    <p class="tip">这步<b>只需各材料的 MSDS</b>——qwen 读后自动提出材质清单。其余报告<b>下一步「④挂文件」按槽补</b>，不必现在全找齐。</p>
+    <div class="prep-list">
+      <div class="prep-head">📋 整套承认书最终需要的文件（心里有数即可，逐步补）</div>
+      <div class="prep-grid">
+        <span class="prep-now">核心料 MSDS<small>本步必传</small></span>
+        <span>每材质 RoHS / REACH / SVHC<small>④按槽补</small></span>
+        <span>部件承认书 / UL / 信赖性<small>④补充</small></span>
+        <span>包装 / 出货 / 图纸<small>图纸第①步已传</small></span>
+      </div>
+    </div>
   </div>
 
   <main class="workspace bom-ws" id="workspace" style="display:none">

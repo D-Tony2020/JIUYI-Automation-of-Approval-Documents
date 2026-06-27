@@ -10,11 +10,14 @@ let saveTimer = null;
 
 // 证据列 → 拖入时落的 files 桶(放置据此落 K/L/Y; 同 placement_plan.TYPE_COL 反向)
 const COL_BUCKET = { K: "其他", L: "REACH", Y: "RoHS" };
+// 点槽"+选文件"上传时落的桶: K槽=该材质MSDS(单), L=REACH(多), Y=RoHS(多)
+const UPLOAD_BUCKET = { K: "MSDS", L: "REACH", Y: "RoHS" };
 
 async function boot() {
   const job = new URLSearchParams(location.search).get("job");
   if (!job) { $("workspace").innerHTML = "<p class='tip'>缺 job 参数(?job=…)</p>"; return; }
   S.job = job;
+  ensureFileInput();                                       // 隐藏文件选择器(点槽/补充文件共用)
   try { S.partOrder = (await api.getDict()).part_order || []; } catch { /* 默认空 */ }   // 继承③零件顺序
   try {
     const s = await api.filetreeState(job);
@@ -37,7 +40,8 @@ function render() {
   }
   $("bomtable").innerHTML = (html || "<p class='tip'>无材质</p>") + gridReportsHtml();
   renderUnlinked(tree.unlinked);
-  $("toolbar").innerHTML = `<span class="tip">绿=已挂证据 · 灰虚=空槽(MSDS必补,第三方可空) · 删除线=豁免</span>`;
+  $("toolbar").innerHTML = `<span class="tip">绿=已挂证据 · 灰虚=空槽(MSDS必补,第三方可空) · 删除线=豁免 · 点槽内"+选文件"随时从电脑补</span>`
+    + `<button id="addpile" class="addpile-btn" title="补部件承认/UL/信赖性等, 进认不准池再归位">+ 补充文件(部件/UL/其他)</button>`;
   bind();
   refresh();
 }
@@ -53,7 +57,8 @@ function matRow(m) {
       : (real.豁免 ? `<span class="emptyslot opt">—</span>`
         : `<span class="emptyslot ${must ? "must" : "opt"}">${must ? "缺 · 必补" : "可空"}</span>`);
     const sst = (st === "todo" && !must && !real.豁免) ? "opt" : st;   // 第三方空=opt(不算缺)
-    return `<div class="slot" data-drop="${m.idx}|${col.key}" data-st="${sst}"><div class="col-label">${col.key} ${col.label}</div>${chips}${empty}</div>`;
+    const add = real.豁免 ? "" : `<button class="addslot" data-add="${m.idx}|${col.key}" title="从电脑选文件补到此槽">+ 选文件</button>`;
+    return `<div class="slot" data-drop="${m.idx}|${col.key}" data-st="${sst}"><div class="col-label">${col.key} ${col.label}</div>${chips}${empty}${add}</div>`;
   }).join("");
   return `<div class="card mat-card ${m.豁免 ? "exempt" : ""}" data-st="${m.豁免 ? "exempt" : "ok"}" data-i="${m.idx}">
     <div class="mat-row"><span class="matname">${esc(m.材质)}</span>
@@ -108,12 +113,58 @@ function bind() {
   document.querySelectorAll("[data-unlink]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); const [i, t, f] = el.dataset.unlink.split("|"); unlinkFile(+i, t, f); });
   document.querySelectorAll("[data-exempt]").forEach((el) => el.onclick = () => toggleExempt(+el.dataset.exempt));
   document.querySelectorAll("[data-sug]").forEach((el) => el.onclick = () => attachSuggested(+el.dataset.sug));
+  document.querySelectorAll("[data-add]").forEach((el) => el.onclick = (e) => {   // 点槽→选文件补到该材质的K/L/Y
+    e.stopPropagation(); const [mi, colKey] = el.dataset.add.split("|"); pickFiles({ mi: +mi, colKey }, colKey !== "K");
+  });
+  const ap = $("addpile"); if (ap) ap.onclick = () => pickFiles({ unlinked: true }, true);   // 补部件/UL→认不准池
   document.querySelectorAll("[data-grpart]").forEach((el) => el.onchange = () => {   // 横排报告零件归属→标签/顺序
     S.bom.部件归属 = S.bom.部件归属 || {};
     S.bom.部件归属[el.dataset.grpart] = el.value;
     save();
   });
   $("gatebtn").onclick = onConfirm;
+}
+
+// ── 随时从电脑补文件(点槽 / 补充) ───────────────────────────
+function ensureFileInput() {
+  if ($("hiddenfile")) return;
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.id = "hiddenfile"; inp.accept = ".pdf,.png,.jpg,.jpeg"; inp.style.display = "none";
+  inp.addEventListener("change", () => { const fs = [...inp.files]; if (fs.length) onFilePicked(fs); });
+  document.body.appendChild(inp);
+}
+
+function pickFiles(ctx, multiple) {
+  S.uploadCtx = ctx;
+  const inp = $("hiddenfile");
+  inp.multiple = !!multiple; inp.value = "";       // 清空→重选同名也触发change
+  inp.click();
+}
+
+async function onFilePicked(files) {
+  const ctx = S.uploadCtx;
+  if (!ctx) return;
+  setBusy(`上传 ${files.length} 份文件…`);
+  try {
+    const r = await api.uploadMaterials(S.job, files);   // 存 materials/(复用现有端点, 装配按文件名取图标)
+    (r.saved || []).forEach((name) => placeUploaded(ctx, name));
+    setBusy(""); save(); render();
+    toast(`已添加 ${(r.saved || []).length} 份文件${ctx.unlinked ? "→ 认不准池(请归位)" : ""}`, "ok");
+  } catch (e) { setBusy(""); toast("上传失败：" + e.message, "err"); }
+}
+
+function placeUploaded(ctx, name) {
+  if (ctx.unlinked) {                                // 补部件/UL等→进认不准池, 由拖拽/部件归属落位
+    if (!S.bom.unlinked_files.some((u) => u.文件 === name)) S.bom.unlinked_files.push({ 文件: name, 类型: "其他" });
+    return;
+  }
+  const fz = S.bom.materials[ctx.mi].files = S.bom.materials[ctx.mi].files || {};
+  const bucket = UPLOAD_BUCKET[ctx.colKey];
+  if (bucket === "MSDS") { fz.MSDS = name; }          // MSDS 单值
+  else {
+    fz[bucket] = Array.isArray(fz[bucket]) ? fz[bucket] : (fz[bucket] ? [fz[bucket]] : []);
+    if (!fz[bucket].includes(name)) fz[bucket].push(name);
+  }
 }
 
 function _removeFromSource() {
