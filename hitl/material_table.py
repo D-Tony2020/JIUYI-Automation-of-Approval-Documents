@@ -12,8 +12,9 @@ import json
 import datetime
 from openpyxl.styles import Border, Side, Alignment, Font
 
-# 成份名称标准词表(由7样本实证归纳): {材质: {cas: 标准名}}。查不到→保留MSDS原文。
-_DICT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "成份名称词表.json")
+# 成份名称标准词表(由7样本实证归纳): {材质: {cas: 标准名}}。查不到→保留MSDS原文。只读种子, 随程序。
+from hitl import userdata as _ud
+_DICT_PATH = os.path.join(_ud.resource_base(), "hitl", "data", "成份名称词表.json")
 try:
     with open(_DICT_PATH, encoding="utf-8") as _f:
         _COMP_DICT = json.load(_f)

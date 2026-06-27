@@ -8,11 +8,31 @@
 import json
 import os
 import re
+import shutil
 
-DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+from hitl import userdata
+
+# 字典学习库跟用户走(%APPDATA%, 重装/升级继承); 种子随程序(hitl/data, 首启播种)。
+DATA = os.path.join(userdata.USER_DATA_DIR, "dicts")
+_SEED = os.path.join(userdata.resource_base(), "hitl", "data")
 _FILES = {"alias": "材质简称字典.json", "catpart": "材质类别零件字典.json",
           "supplier": "供应商历史.json", "part_order": "零件顺序.json",
           "assign": "归属学习.json"}                  # 报告归属在线学习(成长型)
+
+
+def ensure_seeded():
+    """首启: %APPDATA% 无字典则从随程序的种子拷一份(新机有合理默认); 已存在不覆盖(保用户积累)。"""
+    try:
+        os.makedirs(DATA, exist_ok=True)
+    except OSError:
+        return
+    for fn in _FILES.values():
+        dst, seed = os.path.join(DATA, fn), os.path.join(_SEED, fn)
+        if not os.path.exists(dst) and os.path.exists(seed):
+            try:
+                shutil.copyfile(seed, dst)
+            except OSError:
+                pass
 
 
 def _path(kind):
@@ -29,8 +49,14 @@ def _load(kind, default):
 
 def _save(kind, data):
     os.makedirs(DATA, exist_ok=True)
-    with open(_path(kind), "w", encoding="utf-8") as f:
+    p = _path(kind)
+    tmp = p + ".tmp"                              # 原子写(临时文件+替换), 防写一半坏档
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, p)
+
+
+ensure_seeded()                                  # import 即播种(幂等); 单测覆盖 DATA 后不受影响
 
 
 def _norm(s):

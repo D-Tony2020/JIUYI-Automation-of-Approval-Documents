@@ -18,7 +18,8 @@ from hitl.ole_assemble import count_ole, embed_many, make_icon, verify_open
 from hitl.placement_plan import build_specs, stage2_to_nested_bom
 from hitl import sample_photo
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from hitl import userdata
+ROOT = userdata.resource_base()                 # 资源(模板随程序)
 BLANK = os.path.join(ROOT, "模板", "承认书空白模板_通用.xlsx")
 
 
@@ -97,7 +98,7 @@ def assemble_job(job, blank=BLANK):
     dims = dims_from_stage1(s1)
     photos = [os.path.join(state.photos_dir(job), p) for p in state.photos_list(job)]
     code = meta["品号"] or job
-    outdir = os.path.join(ROOT, "产出留档", "导出", code)
+    outdir = os.path.join(userdata.work_base(), "产出留档", "导出", code)   # 可写(dev原位/冻结→%APPDATA%)
     out = os.path.join(outdir, f"{code}_承认书.xlsx")
     try:
         r = assemble(s3, meta, dims, state.materials_dir(job), state.drawing_pdf(job),

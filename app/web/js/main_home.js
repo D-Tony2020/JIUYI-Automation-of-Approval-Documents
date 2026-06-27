@@ -13,6 +13,9 @@ function fmtTime(t) {
 
 async function boot() {
   if (!document.querySelector("link[rel=icon]")) { const l = document.createElement("link"); l.rel = "icon"; l.href = "favicon.svg"; document.head.appendChild(l); }
+  fetch("/api/version").then((r) => r.json()).then((v) => {        // 版本号(右上品牌旁)
+    const b = document.querySelector(".brand-name"); if (b && v.version) b.innerHTML = `材料承认书自动生成 <small style="color:#9ca3af">v${v.version}</small>`;
+  }).catch(() => {});
   const el = document.getElementById("orderlist");
   let list;
   try { list = await api.orders(); } catch (e) { el.innerHTML = `<p class="tip">读取失败：${esc(e.message)}</p>`; return; }

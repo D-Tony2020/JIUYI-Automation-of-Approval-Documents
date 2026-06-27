@@ -21,10 +21,11 @@ from typing import List
 
 from hitl.drawing_extract import extract as draw_extract
 from hitl.fai import spec_limits
+from hitl import userdata
 from app import state, rules
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-WEB = os.path.join(APP_DIR, "web")
+WEB = os.path.join(userdata.resource_base(), "app", "web")   # 静态前端(随程序; dev=app/web, 冻结=_MEIPASS/app/web)
 app = FastAPI(title="确认环① 图纸识别")
 
 
@@ -382,15 +383,22 @@ async def export_assemble(job: str, request: Request):
         body = await request.json()
     except Exception:
         pass
-    hitl_root = os.path.dirname(APP_DIR)
-    try:
-        r = subprocess.run([sys.executable, "-m", "hitl.assemble_order", job],
-                           cwd=hitl_root, capture_output=True, text=True, timeout=300, encoding="utf-8")
-    except subprocess.TimeoutExpired:
-        raise HTTPException(504, "装配超时(WPS 可能卡), 请重试")
-    out = r.stdout or ""
-    mk = "@@RESULT@@"
-    res = json.loads(out[out.rindex(mk) + len(mk):].strip()) if mk in out else {"ok": False, "err": (r.stderr or "")[-200:]}
+    if getattr(sys, "frozen", False):
+        from hitl.assemble_order import assemble_job          # 冻结exe无 python -m → 进程内装配(无子进程隔离, 但可跑)
+        try:
+            res = assemble_job(job)
+        except Exception as e:
+            res = {"ok": False, "err": str(e)[-200:]}
+    else:
+        hitl_root = os.path.dirname(APP_DIR)
+        try:
+            r = subprocess.run([sys.executable, "-m", "hitl.assemble_order", job],
+                               cwd=hitl_root, capture_output=True, text=True, timeout=300, encoding="utf-8")
+        except subprocess.TimeoutExpired:
+            raise HTTPException(504, "装配超时(WPS 可能卡), 请重试")
+        out = r.stdout or ""
+        mk = "@@RESULT@@"
+        res = json.loads(out[out.rindex(mk) + len(mk):].strip()) if mk in out else {"ok": False, "err": (r.stderr or "")[-200:]}
     if not res.get("ok"):
         raise HTTPException(500, "装配失败: " + str(res.get("err", "?")))
     proj = state.load_json(job, "project.json", {"job": job})
@@ -483,6 +491,15 @@ def pool(job: str):
             t = "未识别"
         files.append({"文件": b, "类型": t, "已识别": bool(slots) or is_msds_name(b)})
     return {"files": files, "count": len(files)}
+
+
+@app.get("/api/version")
+def version_info():
+    try:
+        import version as _v
+        return {"version": _v.VERSION, "app": _v.APP_NAME, "build": _v.BUILD_DATE}
+    except Exception:
+        return {"version": "?", "app": "久益-承认书自动化", "build": ""}
 
 
 app.mount("/", StaticFiles(directory=WEB, html=True), name="web")   # 前端静态, 必须最后挂

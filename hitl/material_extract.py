@@ -15,7 +15,8 @@ import sys
 import re
 import threading
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from hitl import userdata
+ROOT = userdata.resource_base()
 _SPIKE = os.path.join(ROOT, "spike")
 for _p in (ROOT, _SPIKE):                       # spike 模块用裸名互相 import, 须加 spike/ 到 path
     if _p not in sys.path:
@@ -27,7 +28,7 @@ from pdf_text import pdf_to_text, pdf_to_table_markdown
 
 PROVIDER, MODEL = "qwen", "qwen3.7-plus"        # qwen3.7-plus(多模态+深度思考, 抽取关思考); 旧路径 qwen-plus
 _CAS = re.compile(r"\d{2,7}-\d{2}-\d")
-_CACHE = os.path.join(ROOT, ".work", "material_cache")
+_CACHE = os.path.join(userdata.work_base(), ".work", "material_cache")   # 可写(dev原位/冻结→%APPDATA%)
 
 
 def _extract_key(text, kind, provider, model):

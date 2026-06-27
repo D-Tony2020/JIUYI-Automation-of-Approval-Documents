@@ -9,8 +9,9 @@ drawing/            = 本单上传的生久图纸
 import os
 import json
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # HITL 根
-WORK = os.path.join(ROOT, ".work", "orders")
+from hitl import userdata
+
+WORK = os.path.join(userdata.work_base(), ".work", "orders")   # 运行态(dev原位/冻结→%APPDATA%, 可写)
 
 
 def order_dir(job):
