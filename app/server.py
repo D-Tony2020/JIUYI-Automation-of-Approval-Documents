@@ -206,6 +206,33 @@ def filetree_state(job: str):
     return s
 
 
+@app.get("/api/overview/{job}")
+def overview(job: str):
+    """全流程总进度(供步条缺N徽标+断点续做首页): 各步缺项数+是否完成。各步状态文件不存在则该步缺=null。"""
+    out = {}
+    s1 = state.load_json(job, "stage1_drawing.json")
+    if s1:
+        out["1"] = {"缺": len(rules.validate_confirm(s1)), "done": bool(s1.get("confirmed"))}
+    s2 = state.load_json(job, "stage2_bom.json")
+    if s2:
+        out["2"] = {"缺": len(rules.validate_bom(s2)), "done": bool(s2.get("confirmed"))}
+    s3raw = state.load_json(job, "stage3_filetree.json")
+    s3 = s3raw or s2
+    if s3:
+        out["3"] = {"缺": len(rules.validate_filetree(s3)), "done": bool((s3raw or {}).get("confirmed_filetree"))}
+        try:
+            ph = len(state.photos_list(job))
+        except Exception:
+            ph = 0
+        try:
+            warns = rules.export_preflight(s3, ph).get("warnings", [])
+        except Exception:
+            warns = []
+        proj = state.load_json(job, "project.json") or {}
+        out["4"] = {"缺": len(warns), "done": bool(proj.get("exported"))}
+    return out
+
+
 @app.post("/api/filetree/{job}/save")
 async def filetree_save(job: str, request: Request):
     """中途草稿存(不校验), 防刷新丢拖拽纠正。"""

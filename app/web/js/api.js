@@ -16,6 +16,10 @@ export async function extract(job) {
   return _json(`/api/drawing/${job}/extract`, { method: "POST" });
 }
 
+export async function overview(job) {
+  return _json(`/api/overview/${job}`);            // 各步缺N(步条徽标/断点续做首页)
+}
+
 export async function getState(job) {
   return _json(`/api/drawing/${job}/state`);
 }

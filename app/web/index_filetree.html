@@ -3,17 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>确认环② 文件树</title>
+  <title>材料承认书 · 第3步 挂文件 · 久益</title>
+  <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/bom.css">
   <link rel="stylesheet" href="css/filetree.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="steps">
-      <span class="step done">①核对图纸</span><span class="step done">②选型</span>
-      <span class="step done">③BOM脊柱</span><span class="step active">④文件树</span><span class="step">⑤照片</span>
-    </div>
+    <div class="steps" id="stepbar"></div>
     <div class="boundary">本环确认证据文件落点（每材质 K MSDS / L REACH·SVHC / Y RoHS）· 拖认不准的报告归位 · 缺可豁免</div>
     <div class="dwgname" id="dwgname"></div>
   </header>
@@ -37,5 +35,6 @@
   </footer>
 
   <script type="module" src="js/main_filetree.js"></script>
+  <script type="module">import { renderSteps } from "./js/steps.js"; renderSteps("stepbar", 3);</script>
 </body>
 </html>

@@ -3,17 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>⑤ 样品照片 + 总装导出</title>
+  <title>材料承认书 · 第4步 照片导出 · 久益</title>
+  <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/bom.css">
   <link rel="stylesheet" href="css/export.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="steps">
-      <span class="step done">①核对图纸</span><span class="step done">②选型</span>
-      <span class="step done">③BOM脊柱</span><span class="step done">④文件树</span><span class="step active">⑤照片+导出</span>
-    </div>
+    <div class="steps" id="stepbar"></div>
     <div class="boundary">贴样品照片（2–4 张，剪贴板粘贴或选文件）· 看溯源与软预警 · 总装导出终态承认书</div>
     <div class="dwgname" id="dwgname"></div>
   </header>
@@ -46,5 +44,6 @@
   </footer>
 
   <script type="module" src="js/main_export.js"></script>
+  <script type="module">import { renderSteps } from "./js/steps.js"; renderSteps("stepbar", 4);</script>
 </body>
 </html>

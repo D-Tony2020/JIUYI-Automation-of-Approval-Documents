@@ -3,16 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>确认环③ BOM 脊柱</title>
+  <title>材料承认书 · 第2步 理材质 · 久益</title>
+  <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/bom.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="steps">
-      <span class="step done">①核对图纸</span><span class="step done">②选型</span>
-      <span class="step active">③BOM脊柱</span><span class="step">④文件树</span><span class="step">⑤照片</span>
-    </div>
+    <div class="steps" id="stepbar"></div>
     <div class="boundary">本环搭 BOM 脊柱 · 只归料不碰文件树</div>
     <div class="dwgname" id="dwgname"></div>
   </header>
@@ -37,5 +35,6 @@
   </footer>
 
   <script type="module" src="js/main_bom.js"></script>
+  <script type="module">import { renderSteps } from "./js/steps.js"; renderSteps("stepbar", 2);</script>
 </body>
 </html>

@@ -3,16 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>确认环① 图纸识别</title>
+  <title>材料承认书 · 第1步 核对图纸 · 久益</title>
+  <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
   <!-- 顶带: 5步流进度 + 边界标签 + 本单图纸名 -->
   <header class="topbar">
-    <div class="steps">
-      <span class="step active">①核对图纸</span><span class="step">②选型</span>
-      <span class="step">③材料</span><span class="step">④整品</span><span class="step">⑤照片</span>
-    </div>
+    <div class="steps" id="stepbar"></div>
     <div class="boundary">本环只核对图纸 · 不碰材料文件</div>
     <div class="dwgname" id="dwgname"></div>
   </header>
@@ -47,5 +45,6 @@
   </footer>
 
   <script type="module" src="js/main.js"></script>
+  <script type="module">import { renderSteps } from "./js/steps.js"; renderSteps("stepbar", 1);</script>
 </body>
 </html>
