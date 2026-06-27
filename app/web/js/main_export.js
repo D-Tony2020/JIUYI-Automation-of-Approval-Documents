@@ -2,6 +2,7 @@
 import * as api from "./api.js";
 import { ackKey, exportSummary } from "./exportstate.js";
 import { renderGate } from "./gate.js";
+import { dlgConfirm, toast } from "./dialog.js";
 
 const S = { job: null, photos: [], warnings: [], trace: [], acked: new Set() };
 const $ = (id) => document.getElementById(id);
@@ -102,14 +103,14 @@ function refresh() {
 }
 
 async function onExport() {
-  if (S.photos.length === 0 && !confirm("未贴样品照片，仍要导出吗？(样品照片是承认书必备项)")) return;  // 0照片二次确认(老板拍板)
+  if (S.photos.length === 0 && !(await dlgConfirm("未贴样品照片，仍要导出吗？(样品照片是承认书必备项)"))) return;  // 0照片二次确认(老板拍板)
   setBusy("总装导出中（段一填格 → WPS 嵌 OLE，约 30–60 秒）…");
   $("gatebtn").disabled = true;
   try {
     const r = await api.exportAssemble(S.job, [...S.acked]);
     setBusy("");
     $("summary").innerHTML = `✅ 导出完成：OLE ${r.ole} 个 · <a href="${api.downloadUrl(S.job)}" download>下载承认书</a> · 已打开输出目录`;
-  } catch (e) { setBusy(""); alert("导出失败：" + e.message); }
+  } catch (e) { setBusy(""); toast("导出失败：" + e.message, "err"); }
   finally { $("gatebtn").disabled = false; }
 }
 

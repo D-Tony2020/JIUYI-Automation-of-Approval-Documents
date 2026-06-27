@@ -80,3 +80,17 @@ a.step.done { cursor: pointer; } a.step:hover { filter: brightness(.96); text-de
 .gatebtn.blocked:hover { background: var(--c-warn-t); }
 .flash { animation: flashbg 1.2s ease; }
 @keyframes flashbg { 0%, 100% { background: transparent; } 30% { background: #fef9c3; } }
+/* 页内小面板(替换原生prompt/alert/confirm) */
+.dlg-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 100; align-items: center; justify-content: center; }
+.dlg { background: #fff; border-radius: var(--r-lg); padding: 18px 20px; min-width: 320px; max-width: 460px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+.dlg-title { font-size: var(--fs-md); font-weight: bold; color: var(--c-ink); margin-bottom: 10px; }
+.dlg-presets { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; font-size: var(--fs-base); }
+.dlg-presets label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.dlg-input { width: 100%; padding: 7px 10px; border: 1px solid var(--c-line-d); border-radius: var(--r-sm); font-size: var(--fs-base); box-sizing: border-box; }
+.dlg-err { color: var(--c-err-t); font-size: var(--fs-sm); min-height: 16px; margin-top: 4px; }
+.dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.dlg-btns button { padding: 6px 16px; border-radius: var(--r-sm); border: 1px solid var(--c-line-d); background: #fff; cursor: pointer; font-size: var(--fs-base); }
+.dlg-btns .dlg-ok { background: var(--c-brand); color: #fff; border-color: var(--c-brand); }
+.dlg-toast { display: none; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 8px 16px; border-radius: var(--r-md); font-size: var(--fs-base); z-index: 120; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+.dlg-toast.err { background: var(--c-err); }
+.dlg-toast.ok { background: var(--c-ok); }

@@ -4,6 +4,7 @@ import { deriveLimits } from "./recompute.js";
 import { mountViewer } from "./viewer.js";
 import { checkVersion, checkCode, checkName, checkDim } from "./rules.js";
 import { renderGate, scrollFirstTodo } from "./gate.js";
+import { dlgPrompt } from "./dialog.js";
 
 const S = { job: null, data: null, pages: 1 };
 
@@ -101,12 +102,12 @@ function writeBack(el) {
   else { S.data.dimensions[i][f] = parseFloat(el.value); }
 }
 
-function toggleExempt(i) {
+async function toggleExempt(i) {
   S.data.exemptions = S.data.exemptions || [];
   const at = S.data.exemptions.findIndex((e) => e.序号 === i);
   if (at >= 0) { S.data.exemptions.splice(at, 1); }
   else {
-    const reason = prompt("豁免原因(必填):\n该尺寸非受检 / 图纸未标公差 / 客户豁免 / 其他", "该尺寸非受检");
+    const reason = await dlgPrompt({ title: "尺寸豁免原因(必填, 留痕)", presets: ["该尺寸非受检", "图纸未标公差", "客户豁免", "其他(填备注)"] });
     if (!reason) return;
     S.data.exemptions.push({ 序号: i, 原因: reason, ts: new Date().toISOString() });
     S.data.checked["dim" + i] = false;

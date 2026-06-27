@@ -2,6 +2,7 @@
 import * as api from "./api.js";
 import { planTree, slotState, filetreeMissing, COLS } from "./treestate.js";
 import { renderGate, scrollFirstTodo } from "./gate.js";
+import { dlgPrompt, toast, EXEMPT_REASONS } from "./dialog.js";
 
 const S = { job: null, bom: { materials: [], unlinked_files: [] }, partOrder: [], gridReports: [], parts: [], drag: null };
 const $ = (id) => document.getElementById(id);
@@ -157,10 +158,10 @@ function unlinkFile(mi, type, file) {
   save(); render();
 }
 
-function toggleExempt(i) {
+async function toggleExempt(i) {
   const m = S.bom.materials[i];
   if (m.豁免) { delete m.豁免; delete m.豁免原因; }
-  else { const r = prompt("豁免原因（如 本料无第三方报告 / 源缺）:", "本料缺第三方报告"); if (!r) return; m.豁免 = true; m.豁免原因 = r; }
+  else { const r = await dlgPrompt({ title: "豁免原因(必填, 留痕)", presets: EXEMPT_REASONS }); if (!r) return; m.豁免 = true; m.豁免原因 = r; }
   save(); render();
 }
 
@@ -193,7 +194,7 @@ async function onConfirm() {
     $("summary").innerHTML = `✅ 文件树已确认 · <a href="${next}">进入 ⑤照片+导出 →</a>`;
     $("gatebtn").disabled = true;
     setTimeout(() => { location.href = next; }, 900);
-  } catch (e) { setBusy(""); alert("放行被拦：" + e.message); }
+  } catch (e) { setBusy(""); toast("放行被拦：" + e.message, "err"); }
 }
 
 function shortName(s) { s = String(s || ""); return s.length > 22 ? s.slice(0, 20) + "…" : s; }
