@@ -132,30 +132,33 @@ function card(i, dupOf) {
     .concat('<option value="__new__">➕ 新建零件…</option>').join("");
   const catOpts = ['<option value="">类别</option>']
     .concat(CATS.map((c) => `<option ${m.材质类别 === c ? "selected" : ""}>${c}</option>`)).join("");
+  const passed = !!m.已核对, ex = !!m.豁免;
+  const badge = ex ? `<span class="mbadge ex">豁免</span>`
+    : passed ? `<span class="mbadge pass">✓ 已通过</span>`
+      : open ? `<span class="mbadge ready">可核对</span>`
+        : `<span class="mbadge todo">待核对</span>`;
   return `<div class="card mat-card ${m.手补 ? "manual" : ""}" data-st="${st}" data-i="${i}">
     ${m.手补 ? '<div class="manual-tag">手动补 · 无MSDS</div>' : ""}
     ${dupOf[i] !== undefined ? '<div class="dup-tag">⚠ 同名材质重复?<button data-merge="' + dupOf[i] + '">合并</button> <button data-keepdup="' + dupOf[i] + '">都保留</button></div>' : ""}
-    <div class="mat-row">
-      <span class="matdraghandle" draggable="true" data-matdrag="${i}" title="拖到别的零件组即改归属(传递到装表)">⠿</span>
-      ${verifyBtn(i, m, open)}
-      <input type="checkbox" data-sel="${i}">
+    <div class="mat-row1">
+      ${badge}
       <input class="inp matname-in" data-mat="${i}" value="${esc(m.材质)}" title="原文:${esc(m.材质原文) || "—"} · 改为标准名→自动出类别/零件" placeholder="材质(标准名)">
       <select class="inp part-sel ${m.零件 ? "" : "need"}" data-part="${i}">${partOpts}</select>
       <select class="inp ${m.材质类别 ? "" : "need"}" data-cat="${i}">${catOpts}</select>
-      <span class="pill">成分${(m.成份 || []).length}${noCas ? `·⚠无CAS${noCas}` : ""}${reasons.length ? "·⚠" + reasons.length : ""}</span>
-      <button class="exbtn" data-exempt="${i}">${m.豁免 ? "取消豁免" : "豁免"}</button>
+      <button class="cmp-toggle" data-exp="${i}">成分${(m.成份 || []).length} ${open ? "▾" : "▸"}</button>
     </div>
+    <div class="mat-row2">
+      <span class="matdraghandle" draggable="true" data-matdrag="${i}" title="拖到别的零件组即改归属(传递到装表)">⠿ 拖</span>
+      <label class="bulk-sel" title="勾选后用工具行'批量设零件'"><input type="checkbox" data-sel="${i}"> 批量选</label>
+      ${noCas ? `<span class="nocas-tip">⚠ 无CAS ${noCas}</span>` : ""}
+      <span class="row2-right">
+        ${ex ? `<button class="exbtn" data-exempt="${i}">取消豁免</button>`
+      : `<button class="passbtn ${passed ? "on" : ""}" data-pass="${i}">${passed ? "取消通过" : "标记通过"}</button> <button class="exbtn" data-exempt="${i}">豁免</button>`}
+      </span>
+    </div>
+    ${reasons.length ? `<div class="susp-bar" data-exp="${i}">⚠ ${esc(reasons.join(" · "))} ▾ 点击展开成分定位</div>` : ""}
     ${open ? block(i, reasons) : ""}
   </div>`;
-}
-
-function verifyBtn(i, m, open) {
-  // 核对三态机(左侧): 未核对→[核对](一击展开成分) ; 展开未通过→[核对通过✓](再击通过) ; 已核对→[✓已通过](击=取消改)
-  if (m.豁免) return `<button class="verifybtn" data-vs="exempt" disabled>豁免</button>`;
-  const vs = m.已核对 ? "passed" : (open ? "ready" : "idle");
-  const label = { idle: "核对 ▾", ready: "核对通过 ✓", passed: "✓ 已通过" }[vs];
-  const title = { idle: "点击展开成分核对", ready: "再点一次=核对通过", passed: "已通过 · 点击取消并修改" }[vs];
-  return `<button class="verifybtn" data-verify="${i}" data-vs="${vs}" title="${title}">${label}</button>`;
 }
 
 function block(i, reasons) {
@@ -180,18 +183,20 @@ function block(i, reasons) {
 
 // ── 工具行 ──────────────────────────────────────────────────
 function renderToolbar() {
+  const f = S.view.filter || "all";
+  const seg = (v, t) => `<button class="seg-btn ${f === (v || "all") ? "on" : ""}" data-filter="${v}">${t}</button>`;
   $("toolbar").innerHTML = `
-    <button id="addmanual">+ 手动补材质</button>
-    <select id="batchpart"><option value="">批量设零件▾</option>${parts().map((p) => `<option>${esc(p)}</option>`).join("")}<option value="__new__">➕新建…</option></select>
-    <label><input type="checkbox" id="grouptoggle" ${S.view.group ? "checked" : ""}> 按零件分组</label>
-    <label><input type="checkbox" id="ftodo" ${S.view.filter === "todo" ? "checked" : ""}> 只看待补</label>
-    <label><input type="checkbox" id="fwarn" ${S.view.filter === "warn" ? "checked" : ""}> 只看标黄</label>
+    <span class="tb-grp"><b class="tb-lbl">增/批量</b>
+      <button id="addmanual">+ 手动补材质</button>
+      <select id="batchpart"><option value="">批量设零件▾</option>${parts().map((p) => `<option>${esc(p)}</option>`).join("")}<option value="__new__">➕新建…</option></select></span>
+    <span class="tb-grp"><b class="tb-lbl">视图</b>
+      <label><input type="checkbox" id="grouptoggle" ${S.view.group ? "checked" : ""}> 按零件分组</label>
+      <span class="seg">${seg("", "全部")}${seg("todo", "待补")}${seg("warn", "标黄")}</span></span>
     <input id="search" placeholder="搜索 材质/原文/源文件" value="${esc(S.view.q)}">`;
   $("addmanual").onclick = addManual;
   $("batchpart").onchange = (e) => batchAssign(e.target.value);
   $("grouptoggle").onchange = (e) => { S.view.group = e.target.checked; render(); };
-  $("ftodo").onchange = (e) => { S.view.filter = e.target.checked ? "todo" : null; render(); };
-  $("fwarn").onchange = (e) => { S.view.filter = e.target.checked ? "warn" : null; render(); };
+  document.querySelectorAll("[data-filter]").forEach((el) => el.onclick = () => { S.view.filter = el.dataset.filter || null; render(); });
   $("search").oninput = (e) => { S.view.q = e.target.value; render(); };
 }
 
@@ -219,7 +224,8 @@ function bind() {
       moveMatToPart(S.matDrag, el.dataset.partdrop); S.matDrag = null;
     });
   });
-  document.querySelectorAll("[data-verify]").forEach((el) => el.onclick = () => onVerify(+el.dataset.verify));
+  document.querySelectorAll("[data-pass]").forEach((el) => el.onclick = () => onPass(+el.dataset.pass));
+  document.querySelectorAll("[data-exp]").forEach((el) => el.onclick = () => { const i = +el.dataset.exp; S.expanded.has(i) ? S.expanded.delete(i) : S.expanded.add(i); render(); });
   document.querySelectorAll("[data-exempt]").forEach((el) => el.onclick = () => toggleExempt(+el.dataset.exempt));
   document.querySelectorAll("[data-merge]").forEach((el) => el.onclick = () => mergeDup(+el.dataset.merge));
   document.querySelectorAll("[data-keepdup]").forEach((el) => el.onclick = () => {});
@@ -229,12 +235,10 @@ function bind() {
   $("gatebtn").onclick = onConfirm;
 }
 
-function onVerify(i) {                        // 核对三态机: 未核对→展开成分; 展开未通过→通过(收起); 已通过→取消并展开改
+function onPass(i) {                          // [标记通过]/[取消通过] — 独立于展开(展开由成分▸/▾或黄条控制)
   const m = S.materials[i];
   if (m.豁免) return;
-  if (m.已核对) { m.已核对 = false; S.expanded.add(i); }                  // 取消通过→展开可改
-  else if (S.expanded.has(i)) { m.已核对 = true; S.expanded.delete(i); }   // 一击展开后再击=通过→收起清爽
-  else { S.expanded.add(i); }                                            // 首击=展开成分供核对
+  m.已核对 = !m.已核对;
   save(); render();
 }
 
