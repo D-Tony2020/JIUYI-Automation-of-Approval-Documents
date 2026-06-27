@@ -319,7 +319,9 @@ function editComp(token, val) {
 
 function delComp(token) {
   const [i, j] = token.split("|").map(Number);
+  const removed = S.materials[i].成份[j];
   S.materials[i].成份.splice(j, 1); save(); render();
+  toast("已删成分", "info", { label: "撤销", fn: () => { S.materials[i].成份.splice(j, 0, removed); save(); render(); } });
 }
 
 function addComp(i) {

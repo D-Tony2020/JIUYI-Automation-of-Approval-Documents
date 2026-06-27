@@ -12,6 +12,7 @@ function fmtTime(t) {
 }
 
 async function boot() {
+  if (!document.querySelector("link[rel=icon]")) { const l = document.createElement("link"); l.rel = "icon"; l.href = "favicon.svg"; document.head.appendChild(l); }
   const el = document.getElementById("orderlist");
   let list;
   try { list = await api.orders(); } catch (e) { el.innerHTML = `<p class="tip">读取失败：${esc(e.message)}</p>`; return; }

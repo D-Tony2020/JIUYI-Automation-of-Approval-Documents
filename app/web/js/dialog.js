@@ -51,11 +51,20 @@ export function dlgConfirm(msg) {
   });
 }
 
-export function toast(msg, kind = "info") {
+export function toast(msg, kind = "info", action) {
+  // action: {label, fn} → 在 toast 上加按钮(如"撤销"), 该类 toast 停留更久。
   let t = document.getElementById("dlg-toast");
   if (!t) { t = document.createElement("div"); t.id = "dlg-toast"; document.body.appendChild(t); }
-  t.className = "dlg-toast " + kind; t.textContent = msg; t.style.display = "block";
-  clearTimeout(t._t); t._t = setTimeout(() => (t.style.display = "none"), 2800);
+  t.className = "dlg-toast " + kind; t.innerHTML = "";
+  t.append(document.createTextNode(msg));
+  if (action) {
+    const b = document.createElement("button");
+    b.className = "toast-act"; b.textContent = action.label;
+    b.onclick = () => { t.style.display = "none"; action.fn(); };
+    t.append(b);
+  }
+  t.style.display = "block";
+  clearTimeout(t._t); t._t = setTimeout(() => (t.style.display = "none"), action ? 5500 : 2800);
 }
 
 export function savedTick() {                       // 自动保存可见(降低'刷新会不会丢'焦虑)

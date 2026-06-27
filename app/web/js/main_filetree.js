@@ -157,11 +157,21 @@ function dropToUnlinked() {
 }
 
 function unlinkFile(mi, type, file) {
-  const fz = S.bom.materials[mi].files || {};
+  const m = S.bom.materials[mi], fz = m.files || {};
   if (Array.isArray(fz[type])) fz[type] = fz[type].filter((x) => x !== file);
   else if (fz[type] === file) fz[type] = (type === "MSDS") ? "" : [];
   if (!S.bom.unlinked_files.some((u) => u.文件 === file)) S.bom.unlinked_files.push({ 文件: file, 类型: type });
   save(); render();
+  toast(`已移下「${shortName(file)}」`, "info", {       // 撤销: 删回认不准池+挂回原材质列
+    label: "撤销",
+    fn: () => {
+      S.bom.unlinked_files = S.bom.unlinked_files.filter((u) => !(u.文件 === file && u.类型 === type));
+      const f2 = m.files = m.files || {};
+      if (type === "MSDS") f2.MSDS = file;
+      else { f2[type] = Array.isArray(f2[type]) ? f2[type] : (f2[type] ? [f2[type]] : []); if (!f2[type].includes(file)) f2[type].push(file); }
+      save(); render();
+    },
+  });
 }
 
 async function toggleExempt(i) {

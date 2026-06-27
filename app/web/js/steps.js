@@ -14,12 +14,19 @@ function _job() {
   return new URLSearchParams(location.search).get("job") || "";
 }
 
+function _favicon() {
+  if (document.querySelector("link[rel=icon]")) return;
+  const l = document.createElement("link"); l.rel = "icon"; l.href = "favicon.svg"; document.head.appendChild(l);
+}
+
 export function renderSteps(containerId, cur) {
+  _favicon();
   const el = document.getElementById(containerId);
   if (!el) return;
   const job = _job();
+  const brand = `<span class="brand-logo" title="生久 · 材料承认书自动生成">SJ 生久</span>`;
   const home = `<a class="home-link" href="index_home.html" title="返回本单列表">← 本单</a>`;
-  el.innerHTML = home + STEPS.map((s) => {
+  el.innerHTML = brand + home + STEPS.map((s) => {
     const cls = s.n === cur ? "cur" : (s.n < cur ? "done" : "");
     const click = s.n !== cur && job;                 // 非当前步可点跳(回看/续做)
     const inner = `${NUM[s.n]}${s.label}<span class="bdg" data-bdg="${s.n}"></span>`;

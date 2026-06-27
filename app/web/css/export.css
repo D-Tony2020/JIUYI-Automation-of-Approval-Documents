@@ -29,4 +29,8 @@
 table.trace { border-collapse: collapse; width: 100%; font-size: 12px; }
 table.trace th, table.trace td { border: 1px solid #e5e7eb; padding: 3px 8px; text-align: left; }
 table.trace th { background: #f9fafb; color: #6b7280; }
+table.trace tr.trace-bad { background: var(--c-err-bg); }
+table.trace td.bad { color: var(--c-err-t); font-weight: 600; }
+.fix-link { color: var(--c-brand); text-decoration: none; font-size: var(--fs-cap); white-space: nowrap; }
+.fix-link:hover { text-decoration: underline; }
 .gatebtn { background: #16a34a; }

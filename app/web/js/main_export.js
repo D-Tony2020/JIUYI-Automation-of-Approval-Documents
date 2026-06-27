@@ -69,9 +69,18 @@ function render() {
     return `<label class="warn-item ${on ? "acked" : ""}"><input type="checkbox" data-ack="${esc(k)}" ${on ? "checked" : ""}>
       <span class="warn-type">${esc(w.类型)}</span> ${esc(w.文案)} <em>已知悉</em></label>`;
   }).join("") : `<div class="all-ok">✓ 无预警，齐套</div>`;
-  // 溯源表
-  $("trace").innerHTML = `<table class="trace"><tr><th>零件</th><th>材质</th><th>报告编号</th><th>报告日期</th><th>供应商</th></tr>`
-    + S.trace.map((t) => `<tr><td>${esc(t.零件)}</td><td>${esc(t.材质)}</td><td>${esc(t.报告编号)}</td><td>${esc(t.报告日期) || "—"}</td><td>${esc(t.供应商)}</td></tr>`).join("")
+  // 溯源表: 缺报告号/日期标红 + 行末"去④改"回改链(配合可点步条)
+  const jq = encodeURIComponent(S.job);
+  $("trace").innerHTML = `<table class="trace"><tr><th>零件</th><th>材质</th><th>报告编号</th><th>报告日期</th><th>供应商</th><th></th></tr>`
+    + S.trace.map((t) => {
+      const noNo = !(t.报告编号 || "").trim(), noDt = !(t.报告日期 || "").trim();
+      return `<tr class="${noNo || noDt ? "trace-bad" : ""}">`
+        + `<td>${esc(t.零件)}</td><td>${esc(t.材质)}</td>`
+        + `<td class="${noNo ? "bad" : ""}">${noNo ? "缺报告号" : esc(t.报告编号)}</td>`
+        + `<td class="${noDt ? "bad" : ""}">${noDt ? "缺日期" : esc(t.报告日期)}</td>`
+        + `<td>${esc(t.供应商)}</td>`
+        + `<td><a class="fix-link" href="index_filetree.html?job=${jq}">去④改</a></td></tr>`;
+    }).join("")
     + `</table>`;
   bind();
   refresh();
