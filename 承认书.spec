@@ -45,7 +45,10 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
-    excludes=["tkinter", "matplotlib", "pytest", "PyInstaller"],
+    excludes=["tkinter", "matplotlib", "pytest", "PyInstaller",
+              # 未用的重型库(被PyInstaller自动hook误拉, ~1G+), 显式排除瘦身
+              "torch", "torchvision", "torchaudio", "functorch", "transformers",
+              "scipy", "sklearn", "pandas", "tensorboard", "cv2", "IPython", "notebook"],
     noarchive=False,
 )
 pyz = PYZ(a.pure)
