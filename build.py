@@ -50,8 +50,9 @@ def main():
     if r.returncode != 0:
         print("✗ PyInstaller 失败, 退出码", r.returncode)
         sys.exit(r.returncode)
-    raw = os.path.join(DIST, APP_NAME)                       # PyInstaller 产出名(spec COLLECT name)
-    appdir = os.path.join(DIST, f"{APP_NAME}v{VERSION}")     # 版本化发布名(版本管理 + 与历史版并存)
+    BUILD_NAME = "久益承认书自动化"                          # = 承认书.spec 的 EXE/COLLECT name(无连字符·文件系统名, 别用APP_NAME含连字符)
+    raw = os.path.join(DIST, BUILD_NAME)                     # PyInstaller 产出名
+    appdir = os.path.join(DIST, f"{BUILD_NAME}v{VERSION}")   # 版本化发布名(版本管理 + 与历史版并存)
     if os.path.exists(appdir):
         shutil.rmtree(appdir, ignore_errors=True)
     if os.path.exists(raw):
@@ -61,7 +62,7 @@ def main():
             f.write(DEPLOY)                                  # 写最终目录(修v0.1.0写到改名前旧名→丢失的bug)
     except Exception as e:
         print("写部署说明失败:", e)
-    exe = os.path.join(appdir, f"{APP_NAME}.exe")
+    exe = os.path.join(appdir, f"{BUILD_NAME}.exe")
     print(f"\n=== 完成: {exe}  存在={os.path.exists(exe)}  含部署说明={os.path.exists(os.path.join(appdir, '部署说明.txt'))} ===")
 
 
