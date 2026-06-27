@@ -16,7 +16,7 @@ async function boot() {
   const el = document.getElementById("orderlist");
   let list;
   try { list = await api.orders(); } catch (e) { el.innerHTML = `<p class="tip">读取失败：${esc(e.message)}</p>`; return; }
-  if (!list.length) { el.innerHTML = `<div class="empty">暂无本单 · 点右上「+ 新建本单」开始</div>`; return; }
+  if (!list.length) { el.innerHTML = `<div class="empty">暂无本单 · 点右上「+ 新建」开始</div>`; return; }
   el.innerHTML = list.map((o) => {
     const dots = [1, 2, 3, 4].map((n) => {
       const x = (o.overview || {})[n] || null;
