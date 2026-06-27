@@ -50,7 +50,7 @@ def worker(code):
             hit = nm if extract_category(nm)[1] else next((c for c in sorted(CATEGORY_DICT, key=len, reverse=True) if c in nm), "")
             if hit:
                 meta["名称"] = hit
-            dims = [(x.get("中心"), x.get("上"), x.get("下")) for x in (d.get("dimensions") or [])]
+            dims = list(d.get("dimensions") or [])     # draw_extract 已返回 (中心,+公差,-公差) 元组(对称化), 直灌 fill_fai
         except Exception:
             pass
     os.makedirs(OUTDIR, exist_ok=True)
@@ -58,7 +58,18 @@ def worker(code):
     os.makedirs(outdir, exist_ok=True)
     out = os.path.join(OUTDIR, f"{code}_承认书.xlsx")
     r = assemble(stage2, meta, dims, md, drawing_pdf, out, outdir)
+    fai_n = -1                                          # 自测: 读回 FAI 实填项数(中心列非空)
+    try:
+        import openpyxl
+        from hitl import fai
+        wb = openpyxl.load_workbook(out)
+        ws = wb[fai.FAI_SHEET]
+        fai_n = sum(1 for row in range(fai.ITEM_ROW0, fai.ITEM_ROWN + 1) if ws.cell(row, 3).value not in (None, ""))
+        wb.close()
+    except Exception:
+        pass
     res = {"code": code, "ok": os.path.exists(out), "mats": len(stage2.get("materials", [])),
+           "dims": len(dims), "fai": fai_n,
            **{k: r.get(k) for k in ("ole", "opens", "specs", "by_sheet")}}
     with open(os.path.join(OUTDIR, f"_result_{code}.json"), "w", encoding="utf-8") as f:  # 写文件(COM可能关stdout)
         json.dump(res, f, ensure_ascii=False)
@@ -91,7 +102,7 @@ def batch():
     ok = [r for r in results if r.get("ok")]
     print(f"\n=== 汇总: {len(ok)}/{len(CODES)} 成功 ===")
     for r in results:
-        print(f"  {'OK ' if r.get('ok') else '✗  '}{r['code']}: 材质{r.get('mats')} OLE={r.get('ole')} 复开={r.get('opens')} {r.get('err', '')}")
+        print(f"  {'OK ' if r.get('ok') else '✗  '}{r['code']}: 材质{r.get('mats')} FAI={r.get('fai')}/{r.get('dims')} OLE={r.get('ole')} 复开={r.get('opens')} {r.get('err', '')}")
     print(f"\n产出目录: {OUTDIR}")
     json.dump(results, open(os.path.join(OUTDIR, "_summary.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 
