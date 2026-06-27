@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
@@ -56,7 +57,12 @@ def main():
     if os.path.exists(appdir):
         shutil.rmtree(appdir, ignore_errors=True)
     if os.path.exists(raw):
-        os.rename(raw, appdir)                               # 重命名为版本目录(确定性, 不依赖外部进程)
+        for _ in range(6):                                  # 杀软/云同步偶尔短暂锁住新建 _internal → 退避重试
+            try:
+                os.rename(raw, appdir)                       # 重命名为版本目录(确定性, 不依赖外部进程)
+                break
+            except OSError:
+                time.sleep(2)
     try:
         with open(os.path.join(appdir, "部署说明.txt"), "w", encoding="utf-8") as f:
             f.write(DEPLOY)                                  # 写最终目录(修v0.1.0写到改名前旧名→丢失的bug)
