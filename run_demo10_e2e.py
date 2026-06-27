@@ -125,7 +125,7 @@ def _wmatch(ov, gv):
     if "余量" in g or g[:1] in "<>≤≥＜＞〈〉":
         return g.replace(" ", "") == o.replace(" ", "")
     on = _num(ov)
-    nums = [float(x) for x in re.findall(r"\d*\.?\d+", g)]
+    nums = [float(x) for x in re.findall(r"\d*\.?\d+(?:[eE][-+]?\d+)?", g)]   # 科学计数法4e-05算一个数(非范围)
     if on is None or not nums:
         return g == o
     pct = ("%" in g) or (len(nums) >= 2) or (max(nums) > 1)   # golden 是百分数刻度
@@ -137,7 +137,8 @@ def _wmatch(ov, gv):
 
 def compare(ours, gold):
     """逐格对比 → 计数 {项: [对, 总]}。"""
-    R = {k: [0, 0] for k in ("材质覆盖", "材质名", "材质类别", "零件", "成份名(G)", "CAS(H)", "重量%(J)", "RoHS(M-V)")}
+    R = {k: [0, 0] for k in ("材质覆盖", "材质名", "材质类别", "零件", "成份名(G)", "CAS(H)",
+                             "重量%单值", "重量%区间", "RoHS(M-V)")}
     R["材质覆盖"] = [0, len(gold)]
     pairs = _match(ours, gold)
     R["材质覆盖"][0] = len(pairs)
@@ -161,9 +162,12 @@ def compare(ours, gold):
                     R["成份名(G)"][0] += 1
                 wm = _wmatch(oc.get("重量%"), gc.get("重量%"))
                 if wm is not None:
-                    R["重量%(J)"][1] += 1
+                    import re as _re
+                    gn = _re.findall(r"\d*\.?\d+(?:[eE][-+]?\d+)?", str(gc.get("重量%") or "").replace("%", ""))
+                    key = "重量%区间" if len(gn) >= 2 else "重量%单值"   # golden 是范围(10-30)还是单值
+                    R[key][1] += 1
                     if wm:
-                        R["重量%(J)"][0] += 1
+                        R[key][0] += 1
         # RoHS: 块级首 block 的 10 项
         ob = (o.get("blocks") or [{}])[0].get("rohs", {})
         gb = (g.get("blocks") or [{}])[0].get("rohs", {})
