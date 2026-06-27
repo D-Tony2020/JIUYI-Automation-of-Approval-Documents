@@ -3,6 +3,7 @@ import * as api from "./api.js";
 import { deriveLimits } from "./recompute.js";
 import { mountViewer } from "./viewer.js";
 import { checkVersion, checkCode, checkName, checkDim } from "./rules.js";
+import { renderGate, scrollFirstTodo } from "./gate.js";
 
 const S = { job: null, data: null, pages: 1 };
 
@@ -138,17 +139,26 @@ function refresh() {
     if (!d.checked[key]) missing.push(`尺寸${i + 1}未勾核`);
     markCard(key, rok ? (d.checked[key] ? "ok" : "todo") : "warn");
   });
-  // 放行门 + 摘要
+  // 放行门(软导航式) + 待办chips
   const exN = (d.exemptions || []).length;
-  $("summary").textContent = missing.length ? "还差: " + missing.join(" · ")
-    : `全部已核对${exN ? ` · 豁免${exN}` : ""} · 可放行`;
-  $("gatebtn").disabled = missing.length > 0;
+  S.missing = missing;
+  renderGate({
+    summaryId: "summary", btnId: "gatebtn",
+    missing: missing.map((t) => ({ t, hard: true })),       // ①是硬门
+    doneText: `三要素与FAI全部已核对${exN ? ` · 豁免${exN}` : ""}`,
+    nextLabel: "三要素与FAI全部核对 → 第2步 理材质 →",
+    rule: "硬门：缺项需先核对", todoSel: ".card[data-st='todo'],.card[data-st='warn']",
+  });
 }
 
 function markRule(key, ok) { const e = $("rule-" + key); if (e) e.textContent = ok ? "✓" : "⚠"; if (e) e.className = "rule " + (ok ? "ok" : "warn"); }
 function markCard(key, st) { const c = document.querySelector(`.card[data-key="${key}"]`); if (c) c.dataset.st = st; }
 
 async function onConfirm() {
+  if (S.missing && S.missing.length) {                       // 软导航: 未达→滚到第一个待办, 不跳转
+    scrollFirstTodo(".card[data-st='todo'],.card[data-st='warn']");
+    return;
+  }
   setBusy("提交确认…");
   await api.confirm(S.job, { 品号: S.data.品号, 版本: S.data.版本, 名称: S.data.名称, dimensions: S.data.dimensions, exemptions: S.data.exemptions, checked: S.data.checked });
   const next = "index_bom.html?job=" + encodeURIComponent(S.job);

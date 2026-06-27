@@ -1,6 +1,7 @@
 // 确认环② 文件树编排(M2.4): 证据文件↔材质↔证据列(K/L/Y) 放置确认 + 拖拽纠正认不准报告 + 豁免。
 import * as api from "./api.js";
 import { planTree, slotState, filetreeMissing, COLS } from "./treestate.js";
+import { renderGate, scrollFirstTodo } from "./gate.js";
 
 const S = { job: null, bom: { materials: [], unlinked_files: [] }, partOrder: [], gridReports: [], parts: [], drag: null };
 const $ = (id) => document.getElementById(id);
@@ -164,13 +165,17 @@ function toggleExempt(i) {
 }
 
 function refresh() {
-  const miss = filetreeMissing(S.bom);
+  const miss = filetreeMissing(S.bom);                     // 缺MSDS=硬门
   const exN = S.bom.materials.filter((m) => m.豁免).length;
   const unl = S.bom.unlinked_files.length;
-  $("summary").textContent = miss.length
-    ? "还差: " + miss.slice(0, 8).join(" · ") + (miss.length > 8 ? ` …共${miss.length}` : "")
-    : `放置已齐（${S.bom.materials.length}材质${exN ? `·豁免${exN}` : ""}${unl ? `·待拖${unl}` : ""}）`;
-  $("gatebtn").disabled = miss.length > 0;
+  S.missing = miss;
+  renderGate({
+    summaryId: "summary", btnId: "gatebtn",
+    missing: miss.map((t) => ({ t, hard: true })),
+    doneText: `放置已齐（${S.bom.materials.length}材质${exN ? `·豁免${exN}` : ""}${unl ? `·待拖${unl}` : ""}）`,
+    nextLabel: "放置已确认 → 第4步 照片导出 →",
+    rule: "缺MSDS不可导出；第三方报告缺将带预警", todoSel: ".mat-card[data-st='todo']",
+  });
 }
 
 function save() {
@@ -179,6 +184,7 @@ function save() {
 }
 
 async function onConfirm() {
+  if (S.missing && S.missing.length) { scrollFirstTodo(".mat-card[data-st='todo']"); return; }
   setBusy("提交…");
   try {
     await api.filetreeConfirm(S.job, S.bom);

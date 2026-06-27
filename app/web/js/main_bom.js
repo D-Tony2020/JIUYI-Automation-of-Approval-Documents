@@ -2,6 +2,7 @@
 // 成份可增删改+无CAS标黄; 供应商零件组级(历史下拉+新建); 保存时回写字典记忆。
 import * as api from "./api.js";
 import { groupByPart, detectDups, suspect, allMissing, materialMissing, cardState } from "./bomstate.js";
+import { renderGate, scrollFirstTodo } from "./gate.js";
 import { resolveMaterial } from "./resolve.js";
 
 const S = { job: null, materials: [], dicts: { alias: {}, catpart: {}, suppliers: [] },
@@ -330,9 +331,14 @@ function mergeDup(k) {
 function refresh() {
   const miss = allMissing(S.materials);
   const exN = S.materials.filter((m) => m.豁免).length;
-  $("summary").textContent = miss.length ? "还差: " + miss.slice(0, 8).join(" · ") + (miss.length > 8 ? ` …共${miss.length}` : "")
-    : `BOM脊柱已齐（${S.materials.length}条${exN ? `·豁免${exN}` : ""}）`;
-  $("gatebtn").disabled = miss.length > 0;
+  S.missing = miss;
+  renderGate({
+    summaryId: "summary", btnId: "gatebtn",
+    missing: miss.map((t) => ({ t, hard: true })),         // ②是硬门
+    doneText: `BOM脊柱已齐（${S.materials.length}条${exN ? `·豁免${exN}` : ""}）`,
+    nextLabel: "BOM脊柱已齐 → 第3步 挂文件 →",
+    rule: "硬门：缺项需先补", todoSel: ".mat-card[data-st='todo'],.mat-card[data-st='warn']",
+  });
 }
 
 // 收集本单字典学习: 材质原文→标准名(改过的); 标准名→类别/零件; 零件级供应商
@@ -354,6 +360,7 @@ function save() {
 }
 
 async function onConfirm() {
+  if (S.missing && S.missing.length) { scrollFirstTodo(".mat-card[data-st='todo'],.mat-card[data-st='warn']"); return; }
   setBusy("提交…");
   try {
     await api.learnDict(dictLearnPayload()).catch(() => {});      // 回写字典记忆

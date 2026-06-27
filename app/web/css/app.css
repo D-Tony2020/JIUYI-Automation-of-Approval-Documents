@@ -69,3 +69,14 @@ a.step.done { cursor: pointer; } a.step:hover { filter: brightness(.96); text-de
 .gatebtn { padding: 10px 20px; font-size: 15px; background: #16a34a; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
 .gatebtn:disabled { background: #d1d5db; cursor: not-allowed; }
 .gatebtn:not(:disabled):hover { background: #15803d; }
+/* 软导航门: 待办chips + 常可点(硬门琥珀警示) */
+.todo-chip { display: inline-flex; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin: 2px 4px 2px 0; cursor: pointer; }
+.todo-chip.hard { background: var(--c-err-bg); color: var(--c-err-t); border: 1px solid #fecaca; }
+.todo-chip.soft { background: var(--c-warn-bg); color: var(--c-warn-t); border: 1px solid #fde68a; }
+.todo-chip.more { background: var(--c-bg); color: var(--c-mut); cursor: default; }
+.gate-rule { font-size: 11px; color: var(--c-mut); margin-left: 8px; }
+.gate-ok { font-size: 13px; color: #065f46; font-weight: bold; }
+.gatebtn.blocked { background: var(--c-warn); }
+.gatebtn.blocked:hover { background: var(--c-warn-t); }
+.flash { animation: flashbg 1.2s ease; }
+@keyframes flashbg { 0%, 100% { background: transparent; } 30% { background: #fef9c3; } }

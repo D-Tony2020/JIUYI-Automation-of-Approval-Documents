@@ -1,6 +1,7 @@
 // ⑤照片+总装导出 编排(M2.5)。照片剪贴板/选择 → 预检(全软) → 勾已知悉留痕 → 子进程COM装配导出。
 import * as api from "./api.js";
 import { ackKey, exportSummary } from "./exportstate.js";
+import { renderGate } from "./gate.js";
 
 const S = { job: null, photos: [], warnings: [], trace: [], acked: new Set() };
 const $ = (id) => document.getElementById(id);
@@ -86,12 +87,22 @@ function bind() {
 
 function refresh() {
   const sm = exportSummary(S.warnings, [...S.acked]);
-  $("summary").textContent = sm.total
-    ? `软预警 ${sm.total}（已知悉 ${sm.acked}/${sm.total}）· 照片 ${S.photos.length} 张 — 全软可直接导出`
-    : `齐套无预警 · 照片 ${S.photos.length} 张`;
+  const unacked = sm.total - sm.acked;
+  const miss = [];                                          // ⑤全软门: 未知悉预警/照片<2 都是软chips
+  if (unacked > 0) miss.push({ t: `${unacked}条预警待知悉`, hard: false });
+  if (S.photos.length < 2) miss.push({ t: `照片仅${S.photos.length}张(建议≥2)`, hard: false });
+  renderGate({
+    summaryId: "summary", btnId: "gatebtn",
+    missing: miss,
+    doneText: `齐套无预警 · 照片 ${S.photos.length} 张`,
+    nextLabel: unacked > 0 ? `带预警导出(${unacked}条未知悉) →` : "总装导出承认书 →",
+    rule: "全软门：可带预警导出",
+  });
+  $("gatebtn").classList.toggle("blocked", unacked > 0);    // 有未知悉→橙警示(仍可点)
 }
 
 async function onExport() {
+  if (S.photos.length === 0 && !confirm("未贴样品照片，仍要导出吗？(样品照片是承认书必备项)")) return;  // 0照片二次确认(老板拍板)
   setBusy("总装导出中（段一填格 → WPS 嵌 OLE，约 30–60 秒）…");
   $("gatebtn").disabled = true;
   try {
