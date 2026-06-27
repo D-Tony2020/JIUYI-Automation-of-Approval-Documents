@@ -190,12 +190,18 @@ async def bom_confirm(job: str, request: Request):
     s.update(body); s["confirmed"] = True
     # 文件↔材质链(M2.4 OLE放置据此落K/L/Y格); 认不准的报告留确认环②人工拖
     try:
-        from hitl.file_link import link_materials
+        from hitl.file_link import link_materials, report_type
+        from hitl.file_router import route as _route
+        from hitl.file_account import account_files
         from hitl.material_extract import enrich_rohs
         linked, unlinked = link_materials(state.materials_dir(job), s.get("materials", []))
         enrich_rohs(linked, state.materials_dir(job))        # B 读 RoHS 报告填 10 项值(+报告号/日期)
         s["materials"] = linked
-        s["unlinked_files"] = [{"文件": b, "类型": t} for b, t in unlinked]
+        # 零丢失: 覆盖审计算出全部待归位(含 route=∅未识别 + 豁免材质的文件), 统一进认不准/待归位池
+        acc = account_files(state.materials_dir(job), linked, s.get("部件归属"),
+                            s.get("excluded_files"), state.drawing_pdf(job))
+        s["unlinked_files"] = [{"文件": b, "类型": (report_type(b) if _route(b) else "未识别")}
+                               for b in acc["pending"]]
     except Exception:
         pass                                     # 链/抽失败不挡放行(M2.4 可纯人工拖)
     state.save_json(job, "stage2_bom.json", s)
@@ -243,14 +249,26 @@ def filetree_state(job: str):
     s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json")
     if not s:
         raise HTTPException(404, "本单未完成BOM脊柱")
-    if s.get("unlinked_files"):                       # 认不准报告附"建议归属"(BOM材质颜色/token, 操作员一点即挂)
+    try:                                              # 零丢失: 覆盖审计重算待归位(部件归属/排除变动后实时), 含 route=∅未识别 + 豁免材质文件
+        from hitl.file_account import account_files
+        from hitl.file_link import report_type
+        from hitl.file_router import route as _route
+        acc = account_files(state.materials_dir(job), s.get("materials", []), s.get("部件归属"),
+                            s.get("excluded_files"), state.drawing_pdf(job))
+        s = dict(s, unlinked_files=[{"文件": b, "类型": (report_type(b) if _route(b) else "未识别")}
+                                    for b in acc["pending"]],
+                 excluded_files=s.get("excluded_files", []), pending_count=len(acc["pending"]))
+    except Exception:
+        pass
+    if s.get("unlinked_files"):                       # 认不准/未识别报告附"建议归属"(BOM材质颜色/token + 横排零件, 操作员一点即挂)
         from hitl.file_link import suggest_unlinked
         s = dict(s, unlinked_files=suggest_unlinked(s.get("materials", []), s["unlinked_files"]))
     try:                                              # 横排部件报告(部件承认/UL/信赖性) + 建议零件(供④归属选择)
         from hitl.placement_plan import grid_reports, stage2_to_nested_bom
         nested, _ = stage2_to_nested_bom(s.get("materials", []))
         po = [p["零件"] for p in nested]
-        s = dict(s, grid_reports=grid_reports(state.materials_dir(job), s.get("materials", []), po),
+        s = dict(s, grid_reports=grid_reports(state.materials_dir(job), s.get("materials", []), po,
+                                              part_assign=s.get("部件归属"), excluded=s.get("excluded_files")),
                  parts=[p["零件"] for p in nested])    # 零件下拉选项
     except Exception:
         pass
@@ -304,7 +322,9 @@ def overview(job: str):
             ph = 0
         try:
             warns = rules.export_preflight(s3, ph, drawing_name=(s1 or {}).get("名称", ""),
-                                           category_confirmed=(s1 or {}).get("品类", "")).get("warnings", [])
+                                           category_confirmed=(s1 or {}).get("品类", ""),
+                                           materials_dir=state.materials_dir(job),
+                                           drawing_pdf=state.drawing_pdf(job)).get("warnings", [])
         except Exception:
             warns = []
         proj = state.load_json(job, "project.json") or {}
@@ -343,7 +363,8 @@ async def filetree_confirm(job: str, request: Request):
                 for f in ([v] if isinstance(v, str) else (v or [])):
                     if f:
                         dicts.learn_assign(f, 材质=m.get("材质"), 零件=m.get("零件"))
-        for fn, 零件 in (s.get("部件归属") or {}).items():
+        for fn, v in (s.get("部件归属") or {}).items():    # 值支持 {槽,零件}(新)或 零件str(旧)
+            零件 = v.get("零件") if isinstance(v, dict) else v
             dicts.learn_assign(fn, 零件=零件)
     except Exception:
         pass
@@ -394,7 +415,8 @@ def export_preflight_ep(job: str):
     s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json", {})
     s1 = state.load_json(job, "stage1_drawing.json", {})
     return rules.export_preflight(s, len(state.photos_list(job)),
-                                  drawing_name=s1.get("名称", ""), category_confirmed=s1.get("品类", ""))
+                                  drawing_name=s1.get("名称", ""), category_confirmed=s1.get("品类", ""),
+                                  materials_dir=state.materials_dir(job), drawing_pdf=state.drawing_pdf(job))
 
 
 @app.get("/api/category/dict")

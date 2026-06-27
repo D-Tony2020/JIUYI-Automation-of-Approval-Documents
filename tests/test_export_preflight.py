@@ -37,9 +37,10 @@ def test_豁免不警():
     assert not any(w["类型"] in ("MSDS", "第三方报告") for w in r["warnings"])
 
 
-def test_待拖软警():
+def test_未归位软警():
     s3 = {"materials": [_OK], "unlinked_files": [{"文件": "x.pdf", "类型": "RoHS"}]}
-    assert any(w["类型"] == "待拖" for w in export_preflight(s3, 2)["warnings"])
+    # 无 materials_dir 时回退用 stage3.unlinked_files 算未归位; 类型由"待拖"改"未归位"(零丢失覆盖)
+    assert any(w["类型"] == "未归位" for w in export_preflight(s3, 2)["warnings"])
 
 
 def test_trace含报告日期():

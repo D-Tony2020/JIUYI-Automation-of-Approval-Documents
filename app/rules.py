@@ -101,11 +101,13 @@ def _has_file(m, typ):
     return bool(v if isinstance(v, str) else (v or []))
 
 
-def export_preflight(stage3, photos_count, drawing_name="", category_confirmed=""):
-    """⑤导出预检(M2.5, **全软不硬拦**): 品类词/照片/MSDS/第三方报告/待拖 缺 → 软预警; trace 溯源(含报告日期)。
+def export_preflight(stage3, photos_count, drawing_name="", category_confirmed="",
+                     materials_dir=None, drawing_pdf=None):
+    """⑤导出预检(M2.5, **全软不硬拦**): 品类词/照片/MSDS/第三方报告/未归位 缺 → 软预警; trace 溯源(含报告日期)。
 
     老板决: 不做有效期判定(只在 trace 显报告日期); 全软(操作员勾已知悉即可导出)。
     品类词: 名称归一+词典+学习仍未识别且未现场确认 → 软预警(④可内联确认或勾已知悉), 绝不硬挡。
+    未归位: 覆盖审计算 pending(含 route=∅未识别 + 豁免材质文件), 红线"每个上传文件都有主"→软强提示, 不静默漏件。
     """
     mats = stage3.get("materials") or []
     warnings = []
@@ -128,9 +130,18 @@ def export_preflight(stage3, photos_count, drawing_name="", category_confirmed="
             warnings.append({"类型": "MSDS", "文案": f"{名} 无 MSDS"})
         if not (_has_file(m, "RoHS") or _has_file(m, "REACH") or _has_file(m, "SVHC")):
             warnings.append({"类型": "第三方报告", "文案": f"{名} 无 RoHS/REACH 报告"})
-    unl = len(stage3.get("unlinked_files") or [])
-    if unl:
-        warnings.append({"类型": "待拖", "文案": f"还有 {unl} 份认不准报告未归位（确认环②）"})
+    pending = []
+    if materials_dir:                                  # 权威重算(stage3存档的unlinked_files在④归位后会过期)
+        try:
+            from hitl.file_account import account_files
+            pending = account_files(materials_dir, mats, stage3.get("部件归属"),
+                                    stage3.get("excluded_files"), drawing_pdf)["pending"]
+        except Exception:
+            pending = [u.get("文件") for u in (stage3.get("unlinked_files") or [])]
+    else:
+        pending = [u.get("文件") for u in (stage3.get("unlinked_files") or [])]
+    if pending:
+        warnings.append({"类型": "未归位", "文案": f"还有 {len(pending)} 份上传文件未归位（④挂到材质列/横排槽，或标记本单不收录）；不处理将不进承认书"})
     trace = [{"零件": m.get("零件", ""), "材质": m.get("材质", ""),
               "报告编号": m.get("报告编号", ""), "报告日期": m.get("报告日期", ""),
               "供应商": m.get("供应商", "")} for m in mats]
