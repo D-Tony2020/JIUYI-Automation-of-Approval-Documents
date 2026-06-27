@@ -267,13 +267,14 @@ def filetree_state(job: str):
     if s.get("unlinked_files"):                       # 认不准/未识别报告附"建议归属"(BOM材质颜色/token + 横排零件, 操作员一点即挂)
         from hitl.file_link import suggest_unlinked
         s = dict(s, unlinked_files=suggest_unlinked(s.get("materials", []), s["unlinked_files"]))
-    try:                                              # 横排部件报告(部件承认/UL/信赖性) + 建议零件(供④归属选择)
-        from hitl.placement_plan import grid_reports, stage2_to_nested_bom
+    try:                                              # 统一卡片模型(部件卡 槽=零件 + 页级单槽卡) + 零件下拉选项
+        from hitl.placement_plan import grid_reports, build_cards, stage2_to_nested_bom
         nested, _ = stage2_to_nested_bom(s.get("materials", []))
         po = [p["零件"] for p in nested]
-        s = dict(s, grid_reports=grid_reports(state.materials_dir(job), s.get("materials", []), po,
-                                              part_assign=s.get("部件归属"), excluded=s.get("excluded_files")),
-                 parts=[p["零件"] for p in nested])    # 零件下拉选项
+        s = dict(s, cards=build_cards(s, state.materials_dir(job), state.drawing_pdf(job)),
+                 grid_reports=grid_reports(state.materials_dir(job), s.get("materials", []), po,
+                                           part_assign=s.get("部件归属"), excluded=s.get("excluded_files")),
+                 parts=[p["零件"] for p in nested])    # grid_reports 旧字段并存一版兼容
     except Exception:
         pass
     return s

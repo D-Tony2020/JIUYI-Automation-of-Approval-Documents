@@ -45,6 +45,15 @@
 .orphan-dest, .orphan-target { font-size: 11px; padding: 2px 5px; border: 1px solid #d1d5db; border-radius: 4px; max-width: 130px; }
 .orphan-go { padding: 2px 9px; }
 .orphan-go:disabled { opacity: .45; cursor: not-allowed; }
+/* 部件卡/页级卡(复用材质卡外观) + 零件槽CRUD + 排除区 */
+.part-card .matname small, .page-card .matname small { font-weight: normal; color: #9ca3af; font-size: 11px; margin-left: 4px; }
+.addpart-slot { font-size: 11px; padding: 2px 9px; border: 1px solid #93c5fd; background: #eff6ff; color: #1d4ed8; border-radius: 4px; cursor: pointer; }
+.addpart-slot:hover { background: #dbeafe; }
+.slot-del, .slot-ren { border: none; background: transparent; cursor: pointer; font-size: 11px; opacity: .5; padding: 0 1px; }
+.slot-del:hover, .slot-ren:hover { opacity: 1; }
+.exclude-zone { margin-top: 10px; border: 1px dashed #d1d5db; border-radius: 6px; padding: 9px; text-align: center; font-size: 12px; color: #9ca3af; }
+.exclude-zone.drop-active { border-color: #fca5a5; }
+.exclude-zone.drag-over { border-color: #ef4444; color: #b91c1c; background: #fef2f2; }
 
 /* 横排部件报告归属选择(部件承认/UL/信赖性 → 选零件定标签与顺序) */
 .grid-reports { margin-top: 14px; border-top: 2px dashed #c7d2fe; padding-top: 8px; }

@@ -22,8 +22,8 @@ async function boot() {
   try {
     const s = await api.filetreeState(job);
     S.bom = { materials: s.materials || [], unlinked_files: s.unlinked_files || [],
-              部件归属: s.部件归属 || {}, excluded_files: s.excluded_files || [] };
-    S.gridReports = s.grid_reports || [];
+              部件归属: s.部件归属 || {}, excluded_files: s.excluded_files || [], 槽布局: s.槽布局 || {} };
+    S.cards = s.cards || { parts: [], page: [] };
     S.parts = s.parts || [];
     render();
   } catch (e) {
@@ -39,7 +39,7 @@ function render() {
     for (const mi of tree.parts[p]) html += matRow(tree.materials[mi]);
     html += `</div>`;
   }
-  $("bomtable").innerHTML = (html || "<p class='tip'>无材质</p>") + gridReportsHtml();
+  $("bomtable").innerHTML = (html || "<p class='tip'>无材质</p>") + partsCardsHtml() + pageCardsHtml();
   renderUnlinked(tree.unlinked);
   $("toolbar").innerHTML = `<span class="tip">绿=已挂证据 · 灰虚=空槽(MSDS必补,第三方可空) · 删除线=豁免 · 点槽内"+选文件"随时从电脑补</span>`
     + `<button id="addpile" class="addpile-btn" title="补部件承认/UL/信赖性等, 进认不准池再归位">+ 补充文件(部件/UL/其他)</button>`;
@@ -68,41 +68,56 @@ function matRow(m) {
   </div>`;
 }
 
-function gridReportsHtml() {
-  // 横排部件报告(部件承认/UL/信赖性)归属选择: 选零件→OLE下方部件标签(线材/端子/套管)+顺序。best-effort预填。
-  if (!S.gridReports.length) return "";
-  const tl = { 部件承认: "部件承认书", UL: "UL证明", 信赖性: "信赖性" };
-  const opts = (cur) => ['<option value="">(选零件)</option>']
-    .concat(S.parts.map((p) => `<option ${p === cur ? "selected" : ""}>${esc(p)}</option>`)).join("");
-  const rows = S.gridReports.map((g) => {
-    const cur = (S.bom.部件归属 || {})[g.文件] || g.建议零件 || "";
-    return `<div class="grid-row"><span class="gr-tag">${esc(tl[g.表] || g.表)}</span>`
-      + `<span class="gr-file" title="${esc(g.文件)}">${esc(shortName(g.文件))}</span><span class="gr-arrow">→</span>`
-      + `<select class="gr-sel" data-grpart="${esc(g.文件)}">${opts(cur)}</select></div>`;
+function _pChip(f) {   // 部件/页级卡槽内文件chip(可拖出→部件归属源)
+  return `<span class="filechip" draggable="true" data-from="部件归属" data-file="${esc(f)}" title="${esc(f)}">${esc(shortName(f))}<button class="x" data-unpart="${esc(f)}">×</button></span>`;
+}
+
+function partsCardsHtml() {
+  // 部件卡(复用材质卡外观): 标题=分类(部件承认书/UL/信赖性), 槽=零件; 拖入/+选文件; 零件槽可增/删/改。
+  const cards = (S.cards && S.cards.parts) || [];
+  if (!cards.length) return "";
+  return cards.map((c) => {
+    const slots = c.slots.map((sl) => {
+      const p = sl.零件 || "";
+      const chips = (sl.files || []).map(_pChip).join("");
+      const empty = sl.files.length ? "" : `<span class="emptyslot opt">拖入 / +选文件</span>`;
+      const tools = p ? `<button class="slot-ren" data-renslot="${esc(c.分类)}|${esc(p)}" title="改零件槽名">✎</button>`
+        + `<button class="slot-del" data-delslot="${esc(c.分类)}|${esc(p)}" title="删此零件槽">×</button>` : "";
+      return `<div class="slot pslot" data-drop="slot:${esc(c.short)}|${esc(p)}" data-st="${sl.files.length ? "ok" : "todo"}">
+        <div class="col-label">${esc(p || "未指定零件")} ${tools}</div>${chips}${empty}
+        <button class="addslot" data-padd="slot:${esc(c.short)}|${esc(p)}" title="从电脑选文件补到此槽">+ 选文件</button></div>`;
+    }).join("");
+    return `<div class="card part-card"><div class="mat-row"><span class="matname">${esc(c.分类)} <small>槽=零件</small></span>
+      <button class="addpart-slot" data-addslot="${esc(c.分类)}">+ 增零件槽</button></div>
+      <div class="slot-grid">${slots}</div></div>`;
   }).join("");
-  return `<div class="grid-reports"><div class="gr-head">⊞ 横排部件报告归属 — 选零件定 OLE 下方标签(线材/端子/套管)与顺序；已 best-effort 预填，请核对</div>${rows}</div>`;
+}
+
+function pageCardsHtml() {
+  // 页级单槽卡: 包装/出货/图纸 各一槽(不分零件)。
+  const cards = (S.cards && S.cards.page) || [];
+  if (!cards.length) return "";
+  const slots = cards.map((c) => {
+    const chips = (c.files || []).map(_pChip).join("");
+    const empty = c.files.length ? "" : `<span class="emptyslot opt">拖入 / +选文件</span>`;
+    return `<div class="slot pslot" data-drop="page:${esc(c.short)}" data-st="${c.files.length ? "ok" : "todo"}">
+      <div class="col-label">${esc(c.分类)}</div>${chips}${empty}
+      <button class="addslot" data-padd="page:${esc(c.short)}" title="从电脑选文件补到此槽">+ 选文件</button></div>`;
+  }).join("");
+  return `<div class="card page-card"><div class="mat-row"><span class="matname">页级文件 <small>包装 / 出货 / 图纸</small></span></div>
+    <div class="slot-grid">${slots}</div></div>`;
 }
 
 function renderUnlinked(unlinked) {
-  // 零丢失: 每个待归位文件给三类目标(材质证据列/横排部件槽+零件/本单不收录), 选完一点即归位; 仍可拖到材质列 或 用建议挂。
+  // 零丢失·纯拖拽: 待归位文件=可拖chip, 拖进左侧任意卡的任意槽(材质K/L/Y · 部件卡零件槽 · 页级槽); 建议挂=一键捷径; 拖到"本单不收录"区=排除。
   const rows = unlinked.map((u, j) => {
     const s = u.建议;
     const sug = s ? `<button class="sugbtn" data-sug="${j}" title="一点即挂到「${esc(s.材质)}」的 ${esc(s.col)} 列(${s.据 === "色" ? "按颜色" : "按名称"}匹配)">↳建议挂 ${esc(s.材质)}${s.据 === "色" ? " <small>按色</small>" : ""}</button>` : "";
     return `<div class="orphan-card">
-      <span class="filechip unl" draggable="true" data-from="unlinked" data-type="${esc(u.类型)}" data-file="${esc(u.文件)}" data-j="${j}" title="${esc(u.文件)}">${esc(shortName(u.文件))} <em>${esc(u.类型)}</em></span>
-      <span class="orphan-fix">
-        <select class="orphan-dest" data-of="${j}">
-          <option value="">归到…</option>
-          <optgroup label="材质证据列"><option value="col:L">材质 REACH/SVHC列</option><option value="col:Y">材质 RoHS列</option><option value="col:K">材质 MSDS列</option></optgroup>
-          <optgroup label="横排部件(选零件)"><option value="slot:部件承认">部件承认书</option><option value="slot:UL">UL证明</option><option value="slot:信赖性">信赖性</option></optgroup>
-          <option value="exclude">本单不收录</option>
-        </select>
-        <select class="orphan-target" data-ot="${j}" style="display:none"></select>
-        <button class="passbtn orphan-go" data-go="${j}" disabled>确认</button>
-      </span>${sug}
-    </div>`;
+      <span class="filechip unl" draggable="true" data-from="unlinked" data-type="${esc(u.类型)}" data-file="${esc(u.文件)}" data-j="${j}" title="${esc(u.文件)}">${esc(shortName(u.文件))} <em>${esc(u.类型)}</em></span>${sug}</div>`;
   }).join("");
-  $("unlinked").innerHTML = rows || `<div class="drag-hint">所有上传文件已归位 ✓<br><small>把材质上挂错的也可拖回这里</small></div>`;
+  $("unlinked").innerHTML = (rows || `<div class="drag-hint">所有上传文件已归位 ✓</div>`)
+    + `<div class="exclude-zone" id="excludezone" data-drop="exclude" title="拖到这里=本单不收录(需填原因·留痕)"><i class="ti ti-archive-off" aria-hidden="true"></i> 拖到此处 = 本单不收录</div>`;
 }
 
 // ── 拖拽 ────────────────────────────────────────────────────
@@ -115,7 +130,7 @@ function bind() {
     });
     el.addEventListener("dragend", () => document.querySelectorAll(".drop-active").forEach((t) => t.classList.remove("drop-active")));
   });
-  document.querySelectorAll(".slot").forEach((el) => {
+  document.querySelectorAll(".slot, .exclude-zone").forEach((el) => {     // 材质槽/部件槽/页级槽/排除区 都是落点
     el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("drag-over"); });
     el.addEventListener("dragleave", () => el.classList.remove("drag-over"));
     el.addEventListener("drop", (e) => { e.preventDefault(); el.classList.remove("drag-over"); dropTo(el.dataset.drop); });
@@ -125,34 +140,84 @@ function bind() {
   uz.addEventListener("dragleave", () => uz.classList.remove("drag-over"));
   uz.addEventListener("drop", (e) => { e.preventDefault(); uz.classList.remove("drag-over"); dropToUnlinked(); });
   document.querySelectorAll("[data-unlink]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); const [i, t, f] = el.dataset.unlink.split("|"); unlinkFile(+i, t, f); });
+  document.querySelectorAll("[data-unpart]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); unpartFile(el.dataset.unpart); });
   document.querySelectorAll("[data-exempt]").forEach((el) => el.onclick = () => toggleExempt(+el.dataset.exempt));
   document.querySelectorAll("[data-sug]").forEach((el) => el.onclick = () => attachSuggested(+el.dataset.sug));
-  document.querySelectorAll(".orphan-dest").forEach((el) => el.onchange = () => {       // 选目标→联动第二下拉(材质/零件)
-    const j = el.dataset.of, dest = el.value;
-    const tgt = document.querySelector(`.orphan-target[data-ot="${j}"]`);
-    const go = document.querySelector(`.orphan-go[data-go="${j}"]`);
-    if (!dest || dest === "exclude") { tgt.style.display = "none"; go.disabled = !dest; return; }
-    tgt.innerHTML = dest.startsWith("col:")
-      ? (S.bom.materials || []).map((m, i) => `<option value="${i}">${esc(m.材质 || ("材质" + (i + 1)))}</option>`).join("")
-      : (S.parts || []).map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
-    tgt.style.display = ""; go.disabled = false;
-  });
-  document.querySelectorAll(".orphan-go").forEach((el) => el.onclick = () => {
-    const j = el.dataset.go;
-    const dest = document.querySelector(`.orphan-dest[data-of="${j}"]`).value;
-    const tgt = document.querySelector(`.orphan-target[data-ot="${j}"]`);
-    placeOrphan(+j, dest, tgt.value);
-  });
-  document.querySelectorAll("[data-add]").forEach((el) => el.onclick = (e) => {   // 点槽→选文件补到该材质的K/L/Y
+  document.querySelectorAll("[data-add]").forEach((el) => el.onclick = (e) => {   // 材质槽 +选文件
     e.stopPropagation(); const [mi, colKey] = el.dataset.add.split("|"); pickFiles({ mi: +mi, colKey }, colKey !== "K");
   });
-  const ap = $("addpile"); if (ap) ap.onclick = () => pickFiles({ unlinked: true }, true);   // 补部件/UL→认不准池
-  document.querySelectorAll("[data-grpart]").forEach((el) => el.onchange = () => {   // 横排报告零件归属→标签/顺序
-    S.bom.部件归属 = S.bom.部件归属 || {};
-    S.bom.部件归属[el.dataset.grpart] = el.value;
-    save();
+  document.querySelectorAll("[data-padd]").forEach((el) => el.onclick = (e) => {  // 部件/页级槽 +选文件
+    e.stopPropagation(); pickFiles({ padd: el.dataset.padd }, true);
   });
+  document.querySelectorAll("[data-addslot]").forEach((el) => el.onclick = () => addPartSlot(el.dataset.addslot));
+  document.querySelectorAll("[data-delslot]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); const [c, p] = el.dataset.delslot.split("|"); delPartSlot(c, p); });
+  document.querySelectorAll("[data-renslot]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); const [c, p] = el.dataset.renslot.split("|"); renPartSlot(c, p); });
+  const ap = $("addpile"); if (ap) ap.onclick = () => pickFiles({ unlinked: true }, true);   // 补文件→待归位池
   $("gatebtn").onclick = onConfirm;
+}
+
+// 提交并刷新: 存本单 → 服务端重算 cards/待归位(route在后端) → 重渲染。结构性改动(拖拽/CRUD)走它。
+async function commit() {
+  try {
+    await api.filetreeSave(S.job, { materials: S.bom.materials, unlinked_files: S.bom.unlinked_files,
+      部件归属: S.bom.部件归属 || {}, excluded_files: S.bom.excluded_files || [], 槽布局: S.bom.槽布局 || {} });
+    const s = await api.filetreeState(S.job);
+    S.bom = { materials: s.materials || [], unlinked_files: s.unlinked_files || [],
+      部件归属: s.部件归属 || {}, excluded_files: s.excluded_files || [], 槽布局: s.槽布局 || {} };
+    S.cards = s.cards || { parts: [], page: [] };
+    S.parts = s.parts || [];
+    savedTick();
+  } catch { /* 离线: 退化为本地渲染 */ }
+  render();
+}
+
+const _SHORT = { "部件承认书": "部件承认", "UL证明": "UL", "信赖性": "信赖性" };
+
+function _ensureLayout(分类) {
+  S.bom.槽布局 = S.bom.槽布局 || {};
+  S.bom.槽布局.parts = S.bom.槽布局.parts || {};
+  if (!S.bom.槽布局.parts[分类]) {                  // 首次CRUD: 以当前卡的零件槽为基线
+    const card = (S.cards.parts || []).find((c) => c.分类 === 分类);
+    S.bom.槽布局.parts[分类] = card ? card.slots.map((s) => s.零件).filter(Boolean) : [];
+  }
+  return S.bom.槽布局.parts[分类];
+}
+
+async function addPartSlot(分类) {
+  const p = await dlgPrompt({ title: `新增零件槽 — ${分类}`, placeholder: "零件名, 如 导线 / 胶座端子 / 套管",
+                              presets: (S.parts || []).concat("其他(填新名)") });
+  if (!p) return;
+  const arr = _ensureLayout(分类);
+  if (!arr.includes(p)) arr.push(p);
+  commit();
+}
+
+async function renPartSlot(分类, 零件) {
+  const np = await dlgPrompt({ title: `改零件槽名 — ${零件}`, presets: (S.parts || []) });
+  if (!np || np === 零件) return;
+  const arr = _ensureLayout(分类);
+  const i = arr.indexOf(零件);
+  if (i >= 0) arr[i] = np; else arr.push(np);
+  for (const v of Object.values(S.bom.部件归属 || {})) {       // 同步重命名归属
+    if (v && typeof v === "object" && v.槽 === _SHORT[分类] && v.零件 === 零件) v.零件 = np;
+  }
+  commit();
+}
+
+function delPartSlot(分类, 零件) {
+  const arr = _ensureLayout(分类);
+  const i = arr.indexOf(零件);
+  if (i >= 0) arr.splice(i, 1);
+  for (const [fn, v] of Object.entries(S.bom.部件归属 || {})) {  // 槽内文件→回待归位池(删归属)
+    if (v && typeof v === "object" && v.槽 === _SHORT[分类] && v.零件 === 零件) delete S.bom.部件归属[fn];
+  }
+  commit();
+  toast(`已删零件槽「${零件}」，槽内文件回待归位池`, "info");
+}
+
+function unpartFile(file) {                          // 部件/页级卡槽内文件移下→回待归位池
+  if (S.bom.部件归属) delete S.bom.部件归属[file];
+  commit();
 }
 
 // ── 随时从电脑补文件(点槽 / 补充) ───────────────────────────
@@ -178,13 +243,20 @@ async function onFilePicked(files) {
   try {
     const r = await api.uploadMaterials(S.job, files);   // 存 materials/(复用现有端点, 装配按文件名取图标)
     (r.saved || []).forEach((name) => placeUploaded(ctx, name));
-    setBusy(""); save(); render();
-    toast(`已添加 ${(r.saved || []).length} 份文件${ctx.unlinked ? "→ 认不准池(请归位)" : ""}`, "ok");
+    setBusy(""); await commit();
+    toast(`已添加 ${(r.saved || []).length} 份文件${ctx.unlinked ? "→ 待归位池(请归位)" : ""}`, "ok");
   } catch (e) { setBusy(""); toast("上传失败：" + e.message, "err"); }
 }
 
 function placeUploaded(ctx, name) {
-  if (ctx.unlinked) {                                // 补部件/UL等→进认不准池, 由拖拽/部件归属落位
+  if (ctx.padd) {                                   // 部件/页级卡 +选文件→直接归该槽
+    const isPage = ctx.padd.startsWith("page:");
+    const [short, 零件] = isPage ? [ctx.padd.slice(5), ""] : ctx.padd.slice(5).split("|");
+    S.bom.部件归属 = S.bom.部件归属 || {};
+    S.bom.部件归属[name] = { 槽: short, 零件: 零件 || "" };
+    return;
+  }
+  if (ctx.unlinked) {                                // 补充→进待归位池, 由拖拽落位
     if (!S.bom.unlinked_files.some((u) => u.文件 === name)) S.bom.unlinked_files.push({ 文件: name, 类型: "其他" });
     return;
   }
@@ -197,10 +269,12 @@ function placeUploaded(ctx, name) {
   }
 }
 
-function _removeFromSource() {
-  const d = S.drag;
+function _removeFromSource(d) {
+  d = d || S.drag;
   if (d.from === "unlinked") {
     S.bom.unlinked_files = S.bom.unlinked_files.filter((u) => !(u.文件 === d.file && u.类型 === d.type));
+  } else if (d.from === "部件归属") {                  // 从部件/页级卡槽拖出
+    if (S.bom.部件归属) delete S.bom.部件归属[d.file];
   } else {
     const fz = S.bom.materials[+d.from].files || {};
     if (Array.isArray(fz[d.type])) fz[d.type] = fz[d.type].filter((x) => x !== d.file);
@@ -210,57 +284,51 @@ function _removeFromSource() {
 
 function dropTo(token) {
   if (!S.drag) return;
-  const [miStr, colKey] = token.split("|");
-  const mi = +miStr, bucket = COL_BUCKET[colKey];
-  _removeFromSource();
-  const fz = S.bom.materials[mi].files = S.bom.materials[mi].files || {};
-  fz[bucket] = Array.isArray(fz[bucket]) ? fz[bucket] : (fz[bucket] ? [fz[bucket]] : []);
-  if (!fz[bucket].includes(S.drag.file)) fz[bucket].push(S.drag.file);
-  S.drag = null; save(); render();
+  const d = S.drag, file = d.file;
+  S.drag = null;
+  if (token === "exclude") { excludeFile(d); return; }            // 拖到排除区→填原因(异步)
+  _removeFromSource(d);
+  if (token.startsWith("slot:") || token.startsWith("page:")) {   // 部件卡(分类+零件) / 页级卡(单槽)
+    const isPage = token.startsWith("page:");
+    const [short, 零件] = isPage ? [token.slice(5), ""] : token.slice(5).split("|");
+    S.bom.部件归属 = S.bom.部件归属 || {};
+    S.bom.部件归属[file] = { 槽: short, 零件: 零件 || "" };
+  } else {                                                        // 材质卡 K/L/Y 列
+    const [miStr, colKey] = token.split("|");
+    const fz = S.bom.materials[+miStr].files = S.bom.materials[+miStr].files || {};
+    const bucket = COL_BUCKET[colKey];
+    fz[bucket] = Array.isArray(fz[bucket]) ? fz[bucket] : (fz[bucket] ? [fz[bucket]] : []);
+    if (!fz[bucket].includes(file)) fz[bucket].push(file);
+  }
+  commit();
+}
+
+async function excludeFile(d) {                       // 本单不收录(必填原因·留痕), 然后从源移除
+  const reason = await dlgPrompt({ title: `本单不收录「${shortName(d.file)}」原因(必填·留痕)`,
+                                   presets: ["与本单无关/误传", "重复件", "作废旧版本"] });
+  if (!reason) return;
+  _removeFromSource(d);
+  S.bom.excluded_files = S.bom.excluded_files || [];
+  S.bom.excluded_files.push({ 文件: d.file, 原因: reason });
+  try { api.bomLog(S.job, { 动作: "本单不收录", 详情: `${d.file} — ${reason}` }); } catch { /* 留痕失败不挡 */ }
+  commit();
 }
 
 function attachSuggested(j) {
   const u = S.bom.unlinked_files[j];
   if (!u || !u.建议) return;
   const mi = u.建议.idx, bucket = u.类型 || COL_BUCKET[u.建议.col];   // 落原类型桶(RoHS/SVHC/REACH→对的列)
-  S.bom.unlinked_files.splice(j, 1);
   const fz = S.bom.materials[mi].files = S.bom.materials[mi].files || {};
   fz[bucket] = Array.isArray(fz[bucket]) ? fz[bucket] : (fz[bucket] ? [fz[bucket]] : []);
   if (!fz[bucket].includes(u.文件)) fz[bucket].push(u.文件);
-  save(); render();
-}
-
-async function placeOrphan(j, dest, target) {        // 待归位文件→三类目标归位(材质列/横排槽+零件/本单不收录)
-  const u = S.bom.unlinked_files[j];
-  if (!u || !dest) return;
-  const file = u.文件;
-  if (dest === "exclude") {
-    const reason = await dlgPrompt({ title: `本单不收录「${shortName(file)}」原因(必填·留痕)`,
-                                     presets: ["与本单无关/误传", "重复件", "作废旧版本"] });
-    if (!reason) return;
-    S.bom.excluded_files = S.bom.excluded_files || [];
-    S.bom.excluded_files.push({ 文件: file, 原因: reason });
-    try { api.bomLog(S.job, { 动作: "本单不收录", 详情: `${file} — ${reason}` }); } catch { /* 留痕失败不挡 */ }
-  } else if (dest.startsWith("slot:")) {
-    if (!target) { toast("请选零件", "err"); return; }
-    S.bom.部件归属 = S.bom.部件归属 || {};
-    S.bom.部件归属[file] = { 槽: dest.slice(5), 零件: target };       // 救 route=∅: 显式槽+零件→pile_specs放置
-  } else if (dest.startsWith("col:")) {
-    const bucket = COL_BUCKET[dest.slice(4)], mi = +target;
-    const fz = S.bom.materials[mi].files = S.bom.materials[mi].files || {};
-    fz[bucket] = Array.isArray(fz[bucket]) ? fz[bucket] : (fz[bucket] ? [fz[bucket]] : []);
-    if (!fz[bucket].includes(file)) fz[bucket].push(file);
-  } else { return; }
-  S.bom.unlinked_files.splice(j, 1);
-  save(); render();
-  toast(`已归位「${shortName(file)}」`, "ok");
+  commit();
 }
 
 function dropToUnlinked() {
   if (!S.drag || S.drag.from === "unlinked") { S.drag = null; return; }
-  const d = S.drag; _removeFromSource();
+  const d = S.drag; S.drag = null; _removeFromSource(d);
   if (!S.bom.unlinked_files.some((u) => u.文件 === d.file)) S.bom.unlinked_files.push({ 文件: d.file, 类型: d.type });
-  S.drag = null; save(); render();
+  commit();
 }
 
 function unlinkFile(mi, type, file) {
@@ -268,15 +336,14 @@ function unlinkFile(mi, type, file) {
   if (Array.isArray(fz[type])) fz[type] = fz[type].filter((x) => x !== file);
   else if (fz[type] === file) fz[type] = (type === "MSDS") ? "" : [];
   if (!S.bom.unlinked_files.some((u) => u.文件 === file)) S.bom.unlinked_files.push({ 文件: file, 类型: type });
-  save(); render();
-  toast(`已移下「${shortName(file)}」`, "info", {       // 撤销: 删回认不准池+挂回原材质列
+  commit();
+  toast(`已移下「${shortName(file)}」`, "info", {       // 撤销: 挂回原材质列
     label: "撤销",
     fn: () => {
-      S.bom.unlinked_files = S.bom.unlinked_files.filter((u) => !(u.文件 === file && u.类型 === type));
       const f2 = m.files = m.files || {};
       if (type === "MSDS") f2.MSDS = file;
       else { f2[type] = Array.isArray(f2[type]) ? f2[type] : (f2[type] ? [f2[type]] : []); if (!f2[type].includes(file)) f2[type].push(file); }
-      save(); render();
+      commit();
     },
   });
 }
@@ -285,7 +352,7 @@ async function toggleExempt(i) {
   const m = S.bom.materials[i];
   if (m.豁免) { delete m.豁免; delete m.豁免原因; }
   else { const r = await dlgPrompt({ title: "豁免原因(必填, 留痕)", presets: EXEMPT_REASONS }); if (!r) return; m.豁免 = true; m.豁免原因 = r; }
-  save(); render();
+  commit();
 }
 
 function refresh() {

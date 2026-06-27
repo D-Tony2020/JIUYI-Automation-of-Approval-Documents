@@ -226,6 +226,42 @@ def grid_reports(materials_dir, materials=None, part_order=None, part_assign=Non
     return out
 
 
+def build_cards(stage2_bom, materials_dir, drawing_pdf=None):
+    """④统一卡片模型(部件卡 + 页级卡; 材质卡前端用 materials[] 自渲染)。
+    部件卡: 分类(部件承认书/UL证明/信赖性)→零件槽(槽布局优先, 否则BOM零件; 空槽也出, 供拖入)。
+    页级卡: 包装/出货/图纸 各单槽。收集口径= route() ∪ 部件归属手动指派, 剔 excluded(与 pile_specs 同)。"""
+    materials = stage2_bom.get("materials", [])
+    部件归属 = stage2_bom.get("部件归属") or {}
+    槽布局 = (stage2_bom.get("槽布局") or {}).get("parts") or {}
+    excluded = {_norm(e.get("文件") if isinstance(e, dict) else e) for e in (stage2_bom.get("excluded_files") or [])}
+    bom_parts = list(dict.fromkeys((m.get("零件") or "").strip() for m in materials if (m.get("零件") or "").strip()))
+    src_set = {(m.get("源文件") or "") for m in materials}
+    files = [os.path.basename(f) for f in sorted(glob.glob(os.path.join(materials_dir, "*.pdf")))
+             if _norm(os.path.basename(f)) not in excluded and os.path.basename(f) not in src_set]
+
+    parts_cards = []
+    for short, 分类 in (("部件承认", "部件承认书"), ("UL", "UL证明"), ("信赖性", "信赖性")):
+        bases = [b for b in files if short in route(b) or _pa_slot(部件归属.get(b)) == short]
+        auto = assign_parts_for(bases, materials, bom_parts)
+        slot_parts = list(槽布局.get(分类) or bom_parts)              # 槽骨架: 操作员自定义优先, 否则BOM零件
+        by_part = {p: [] for p in slot_parts}                        # 空槽也出
+        for b in bases:
+            零件 = (_pa_part(部件归属.get(b)) or auto.get(b, "")).strip()
+            by_part.setdefault(零件, [])
+            by_part[零件].append(b)
+        slots = [{"零件": p, "files": by_part[p]} for p in by_part if p or by_part[p]]   # 留有名空槽 + 有文件的未指定槽
+        parts_cards.append({"分类": 分类, "short": short, "slots": slots})
+
+    page_cards = []
+    for short in ("包装", "出货", "图纸"):
+        pf = [b for b in files if short in route(b) or _pa_slot(部件归属.get(b)) == short]
+        if short == "图纸" and drawing_pdf and os.path.basename(drawing_pdf) not in pf:
+            pf.insert(0, os.path.basename(drawing_pdf))
+        page_cards.append({"分类": short, "short": short, "files": pf, "fixed": True})
+
+    return {"parts": parts_cards, "page": page_cards}
+
+
 def _pa_slot(v):
     return v.get("槽") if isinstance(v, dict) else None       # 部件归属值: {槽,零件}(新) 或 零件str(旧)
 
