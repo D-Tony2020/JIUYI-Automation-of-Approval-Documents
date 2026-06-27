@@ -87,3 +87,11 @@ def test_suggest无据返None():
 def test_suggest豁免不入选():
     mats = [{"材质": "黑色油墨", "零件": "导线", "豁免": True}]
     assert suggest_for("黑-CANEC25029526001.pdf", "RoHS", mats) is None       # 豁免材质不作建议
+
+
+def test_镀锡线REACH归镀锡铜不被锡吞():
+    # '镀锡线REACH' 同含 镀锡(→镀锡铜) 与 锡线(→锡), 同分→偏更具体料 镀锡铜(锡⊂镀锡铜), 不被排前的泛料锡吞
+    props = [{"材质": "锡", "源文件": "07CU物質安全資料表无铅锡线 Material Safe Data Sheet(1).pdf"},
+             {"材质": "镀锡铜", "源文件": "MSDS-镀锡铜线.pdf"}]
+    ident = [_ident(p) + (str(p.get("材质") or ""),) for p in props]
+    assert _match_report("镀锡线REACH -英文-CANEC25010225201 2025.05.20.pdf", ident) == 1

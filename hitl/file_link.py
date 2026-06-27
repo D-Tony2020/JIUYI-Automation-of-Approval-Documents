@@ -37,7 +37,7 @@ def _ident(material):
     toks = set()
     for canon, al in ALIAS.items():
         variants = [canon] + list(al)
-        if any(_norm(v) in hay for v in variants):
+        if any(len(_norm(v)) >= 2 and _norm(v) in hay for v in variants):   # 触发变体须≥2字: 防"锡"1字把锡的变体(锡线)误拉进镀锡铜→串报告
             toks.update(_norm(v) for v in variants)
     for pw in ("端子", "胶粒", "塑胶"):               # 部件型通用词: 材质名含则加(报告名爱用"端子ROHS"等通用词)
         if pw in name:
@@ -54,16 +54,20 @@ def _usable_tok(t):
 
 
 def _match_report(filename, mats_ident):
-    """报告文件 → 身份token重叠最长的材质 index。颜色仅在已命中料名时消歧。无把握 None。"""
+    """报告文件 → 身份token重叠最长的材质 index。颜色仅在已命中料名时消歧。无把握 None。
+    同分→更具体(料名更长)的料胜: 防 '镀锡线REACH' 同时命中 锡('锡线') 与 镀锡铜('镀锡'),
+    被排在前的泛料(锡)吞掉(锡⊂镀锡铜)。mats_ident 项为 (toks,mcol) 或 (toks,mcol,料名)。"""
     fn = _norm(filename)
     fcol = _color(filename)
-    best, bs = None, 0
-    for i, (toks, mcol) in enumerate(mats_ident):
+    best, bs, bn = None, 0, -1
+    for i, item in enumerate(mats_ident):
+        toks, mcol = item[0], item[1]
+        nm = item[2] if len(item) > 2 else ""
         s = max((len(t) for t in toks if _usable_tok(t) and t in fn), default=0)
         if s and mcol:                               # 已命中料名→颜色消歧(白/黑油墨)
             s = s + 6 if fcol == mcol else (s - 10 if fcol and fcol != mcol else s)
-        if s > bs:
-            best, bs = i, s
+        if s > 0 and (s > bs or (s == bs and len(nm) > bn)):
+            best, bs, bn = i, s, len(nm)
     return best if bs > 0 else None
 
 
@@ -72,7 +76,7 @@ def link_materials(materials_dir, proposals):
     linked = proposals 副本, 每项加 files={MSDS:源文件, RoHS:[], REACH:[], SVHC:[], 其他:[]}。
     unlinked = [(base, 类型)] 认不准的报告文件, 交确认环②人工拖。
     """
-    mats_ident = [_ident(p) for p in proposals]
+    mats_ident = [_ident(p) + (str(p.get("材质") or ""),) for p in proposals]   # 附料名→同分消歧偏具体料
     linked = [dict(p, files={"MSDS": p.get("源文件"), "RoHS": [], "REACH": [], "SVHC": [], "其他": []})
               for p in proposals]
     unlinked = []
