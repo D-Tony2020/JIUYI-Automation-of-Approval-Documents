@@ -58,4 +58,13 @@ export function toast(msg, kind = "info") {
   clearTimeout(t._t); t._t = setTimeout(() => (t.style.display = "none"), 2800);
 }
 
+export function savedTick() {                       // 自动保存可见(降低'刷新会不会丢'焦虑)
+  let t = document.getElementById("saved-tick");
+  if (!t) { t = document.createElement("div"); t.id = "saved-tick"; t.className = "saved-tick"; document.body.appendChild(t); }
+  const d = new Date(), p = (n) => String(n).padStart(2, "0");
+  t.textContent = `✓ 已自动保存 ${p(d.getHours())}:${p(d.getMinutes())}`;
+  t.style.opacity = "1";
+  clearTimeout(t._t); t._t = setTimeout(() => (t.style.opacity = "0"), 2000);
+}
+
 export const EXEMPT_REASONS = ["本料无第三方报告", "本料无MSDS(已附REACH)", "源缺待补", "客户豁免", "其他(填备注)"];

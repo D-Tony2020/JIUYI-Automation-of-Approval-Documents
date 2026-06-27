@@ -23,6 +23,8 @@
 .slot[data-st=todo] { border: 1px dashed var(--c-warn); background: var(--c-warn-bg); }  /* MSDS空=硬门必补→橙 */
 .slot[data-st=opt] { border: 1px dashed var(--c-line-d); background: #fafafa; }            /* 第三方空=可空→灰 */
 .slot[data-st=exempt] { opacity: .55; }
+.slot.drop-active { border: 1px dashed var(--c-drop); background: #f0f9ff; }                /* 拖动时所有合法落点持续高亮 */
+.unlinked-zone.drop-active { border-color: var(--c-drop); background: #f0f9ff; }
 .slot.drag-over { border: 2px solid var(--c-drop) !important; background: var(--c-drop-bg); }
 .col-label { font-size: var(--fs-sm); color: var(--c-mut); margin-bottom: 3px; font-weight: 600; }
 .emptyslot { font-size: var(--fs-cap); }

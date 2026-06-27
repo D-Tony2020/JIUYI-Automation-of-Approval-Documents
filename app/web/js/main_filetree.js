@@ -2,7 +2,7 @@
 import * as api from "./api.js";
 import { planTree, slotState, filetreeMissing, COLS } from "./treestate.js";
 import { renderGate, scrollFirstTodo } from "./gate.js";
-import { dlgPrompt, toast, EXEMPT_REASONS } from "./dialog.js";
+import { dlgPrompt, toast, savedTick, EXEMPT_REASONS } from "./dialog.js";
 
 const S = { job: null, bom: { materials: [], unlinked_files: [] }, partOrder: [], gridReports: [], parts: [], drag: null };
 const $ = (id) => document.getElementById(id);
@@ -92,7 +92,9 @@ function bind() {
     el.addEventListener("dragstart", (e) => {
       S.drag = { from: el.dataset.from, type: el.dataset.type, file: el.dataset.file };
       e.dataTransfer.effectAllowed = "move";
+      document.querySelectorAll(".slot, .unlinked-zone").forEach((t) => t.classList.add("drop-active"));  // 拖时所有合法落点持续高亮
     });
+    el.addEventListener("dragend", () => document.querySelectorAll(".drop-active").forEach((t) => t.classList.remove("drop-active")));
   });
   document.querySelectorAll(".slot").forEach((el) => {
     el.addEventListener("dragover", (e) => { e.preventDefault(); el.classList.add("drag-over"); });
@@ -185,7 +187,7 @@ function refresh() {
 
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => api.filetreeSave(S.job, S.bom).catch(() => {}), 800);
+  saveTimer = setTimeout(() => api.filetreeSave(S.job, S.bom).then(savedTick).catch(() => {}), 800);
 }
 
 async function onConfirm() {

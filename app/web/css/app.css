@@ -96,3 +96,4 @@ a.step.done { cursor: pointer; } a.step:hover { filter: brightness(.96); text-de
 .dlg-toast { display: none; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 8px 16px; border-radius: var(--r-md); font-size: var(--fs-base); z-index: 120; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
 .dlg-toast.err { background: var(--c-err); }
 .dlg-toast.ok { background: var(--c-ok); }
+.saved-tick { position: fixed; bottom: 16px; right: 16px; background: var(--c-ok-bg); color: #065f46; padding: 4px 12px; border-radius: var(--r-md); font-size: var(--fs-cap); opacity: 0; transition: opacity .3s; z-index: 90; pointer-events: none; }

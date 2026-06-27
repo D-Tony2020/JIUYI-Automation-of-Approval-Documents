@@ -3,7 +3,7 @@
 import * as api from "./api.js";
 import { groupByPart, detectDups, suspect, allMissing, materialMissing, cardState } from "./bomstate.js";
 import { renderGate, scrollFirstTodo } from "./gate.js";
-import { dlgPrompt, toast, EXEMPT_REASONS } from "./dialog.js";
+import { dlgPrompt, toast, savedTick, EXEMPT_REASONS } from "./dialog.js";
 import { resolveMaterial } from "./resolve.js";
 
 const S = { job: null, materials: [], dicts: { alias: {}, catpart: {}, suppliers: [] },
@@ -368,7 +368,7 @@ function dictLearnPayload() {
 
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => api.bomSave(S.job, { materials: S.materials }).catch(() => {}), 800);
+  saveTimer = setTimeout(() => api.bomSave(S.job, { materials: S.materials }).then(savedTick).catch(() => {}), 800);
 }
 
 async function onConfirm() {
