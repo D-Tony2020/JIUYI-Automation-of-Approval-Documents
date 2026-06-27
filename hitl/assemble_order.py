@@ -66,18 +66,8 @@ def assemble(stage2_bom, drawing_meta, dimensions, materials_dir, drawing_pdf, o
         wb.save(cell)
     icondir = os.path.join(outdir, "icons")
     os.makedirs(icondir, exist_ok=True)
-    for k, s in enumerate(specs):       # 序号前缀: 同 pdf 多 spec(不同标签)各生独立图标, 防覆盖→标签↔pdf一一对齐
-        label = (s.get("label") or "").strip()
-        if label:                        # OLE 标题=嵌入文件名(实测WPS忽略IconLabel)→嵌入"重命名副本"使标题=料名/零件名
-            safe = re.sub(r'[\\/:*?"<>|\r\n]', "_", label).strip()[:42] or f"OLE{k}"
-            sub = os.path.join(icondir, f"e{k:03d}"); os.makedirs(sub, exist_ok=True)
-            dst = os.path.join(sub, safe + ".pdf")
-            try:
-                shutil.copyfile(s["pdf"], dst); s["pdf"] = dst
-            except Exception:
-                pass
-        s["icon"] = make_icon(s["pdf"], os.path.join(icondir, f"{k:03d}_{os.path.basename(s['pdf'])}.png"),
-                              label=label or None)
+    for k, s in enumerate(specs):       # OLE 一律嵌原文件: 原文件名作OLE标题, 不重命名/不烤标签(老板: 不做任何加工)
+        s["icon"] = make_icon(s["pdf"], os.path.join(icondir, f"{k:03d}_{os.path.basename(s['pdf'])}.png"))
     if os.path.exists(out_xlsx):
         os.remove(out_xlsx)
     embed_many(cell, out_xlsx, specs)
