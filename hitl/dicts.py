@@ -116,38 +116,81 @@ def _learn_keys(filename):
     return keys
 
 
-def learn_assign(filename, 材质=None, 零件=None):
-    """学习报告归属(操作员④确认的=真值, 成长型): 文件名关键词→材质/零件 投票计数。"""
+# 归位目标受控枚举(成长学习第三维): 材质证据列 / 横排·页级槽 / 排除。非此集的 目标 一律丢弃。
+ASSIGN_TARGETS = {"col:K", "col:L", "col:Y",
+                  "slot:部件承认", "slot:UL", "slot:信赖性", "slot:包装", "slot:出货", "slot:图纸",
+                  "exclude"}
+_SUPPLIER_HINT = ("正崴", "联和", "领飞", "双鸿", "永超", "三博", "奥升德", "立讯", "得意")
+
+
+def _strong_key(filename):
+    """文件名是否含强键(供应商名 / 字母型号码 / ≥4位纯数字料号): 无监督强自动落位的门槛——
+    纯业务词键(端子/盐雾)易跨单串味, 只准弱建议; 强键才允许自动落位。"""
+    base = os.path.splitext(os.path.basename(str(filename or "")))[0]
+    if any(s in base for s in _SUPPLIER_HINT):
+        return True
+    b = re.sub(r"20\d{2}[.\-/年]?\d{0,2}[.\-/月]?\d{0,2}", " ", base)   # 去日期
+    b = re.sub(r"\d{6,}", " ", b)                                        # 去长流水号(同 _learn_keys)
+    return bool(re.search(r"[A-Za-z]{1,}-?\d{2,}", b)                    # 字母型号码 C2001/A2501
+                or re.search(r"(?<![A-Za-z\d])\d{4,5}(?![A-Za-z\d])", b))  # ≥4位纯数字料号
+
+
+def learn_assign(filename, 材质=None, 零件=None, 目标=None):
+    """学习报告归属(操作员④确认的=真值, 成长型): 文件名关键词→材质/零件/目标 投票计数。
+    目标∈ASSIGN_TARGETS(归到材质列K/L/Y · 横排/页级槽 · 排除); 见 [[jiuyi-hitl-knowledge-must-persist]]。"""
     keys = _learn_keys(filename)
-    if not keys or (not (材质 or "").strip() and not (零件 or "").strip()):
+    目标 = 目标 if 目标 in ASSIGN_TARGETS else None
+    if not keys or not ((材质 or "").strip() or (零件 or "").strip() or 目标):
         return
     t = _load("assign", {})
     for k in keys:
-        slot = t.setdefault(k, {"材质": {}, "零件": {}})
-        for fld, val in (("材质", 材质), ("零件", 零件)):
-            v = (val or "").strip()
+        slot = t.setdefault(k, {"材质": {}, "零件": {}, "目标": {}})
+        slot.setdefault("目标", {})                  # 旧档(无目标键)补维, 不破
+        for fld, v in (("材质", (材质 or "").strip()), ("零件", (零件 or "").strip()), ("目标", 目标 or "")):
             if v:
                 slot[fld][v] = slot[fld].get(v, 0) + 1
     _save("assign", t)
 
 
 def lookup_assign(filename):
-    """查学习字典: 文件名关键词→票数最高的 材质/零件(跨关键词累加投票)。无→{}。"""
+    """查学习字典: 文件名关键词→票数最高的 材质/零件/目标(+目标票, 跨关键词累加投票)。无→{}。"""
     keys = _learn_keys(filename)
     if not keys:
         return {}
     t = _load("assign", {})
-    agg = {"材质": {}, "零件": {}}
+    agg = {"材质": {}, "零件": {}, "目标": {}}
     for k in keys:
         slot = t.get(k) or {}
-        for fld in ("材质", "零件"):
-            for v, c in (slot.get(fld) or {}).items():
+        for fld in ("材质", "零件", "目标"):
+            for v, c in (slot.get(fld) or {}).items():    # 旧档无'目标'键→.get 返回空, 兼容
                 agg[fld][v] = agg[fld].get(v, 0) + c
     out = {}
-    for fld in ("材质", "零件"):
+    for fld in ("材质", "零件", "目标"):
         if agg[fld]:
-            out[fld] = max(agg[fld].items(), key=lambda kv: kv[1])[0]
+            best, votes = max(agg[fld].items(), key=lambda kv: kv[1])
+            out[fld] = best
+            if fld == "目标":
+                out["目标票"] = votes
     return out
+
+
+def assign_table():
+    return _load("assign", {})            # {关键词: {材质:{名:票}, 零件:{名:票}, 目标:{枚举:票}}}
+
+
+def forget_assign(key=None, 维度=None, 值=None):
+    """清理归属学习(可见可清理红线): 删整条 key / 某维度 / 某维度某项。返回更新后的表。"""
+    t = _load("assign", {})
+    if key is None or key not in t:
+        return t
+    if 维度 and 值 and 维度 in t[key]:
+        t[key][维度].pop(值, None)
+    elif 维度 and 维度 in t[key]:
+        t[key][维度] = {}
+    else:
+        t.pop(key, None)
+    _save("assign", t)
+    return t
 
 
 def category_dict():
@@ -250,4 +293,5 @@ def order_parts(parts, order=None):
 def all_dicts():
     """前端一次拉全(BOM 页 resolve + 下拉 + 零件顺序)。"""
     return {"alias": alias_table(), "catpart": catpart_table(),
-            "suppliers": supplier_history(), "part_order": part_order()}
+            "suppliers": supplier_history(), "part_order": part_order(),
+            "assign": assign_table()}                 # 归属学习(可见可清理)

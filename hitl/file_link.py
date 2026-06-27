@@ -97,11 +97,17 @@ def link_materials(materials_dir, proposals):
     src_set = {p.get("源文件") for p in proposals}
     for f in sorted(glob.glob(os.path.join(materials_dir, "*.pdf"))):
         base = os.path.basename(f)
+        if base in src_set:                        # MSDS 已是材质源文件, 不重复链
+            continue
+        auto = auto_place_by_learning(base, proposals)   # 无监督命中(操作员真值>route兜底): 学过的材质列直接落
+        if auto and auto["动作"] == "col":
+            linked[auto["mi"]]["files"][auto["桶"]].append(base)
+            continue
         slots = route(base)
         if "材质表" not in slots and "材质证明" not in slots:
-            continue
+            continue                               # 横排/页级(含route=∅)的 slot 命中在 learned_slot_assignments 处理
         rt = report_type(base)
-        if rt == "MSDS" or base in src_set:        # MSDS 已是材质源文件, 不重复链
+        if rt == "MSDS":
             continue
         mi = _match_report(base, mats_ident)
         if mi is None:
@@ -109,6 +115,45 @@ def link_materials(materials_dir, proposals):
             continue
         linked[mi]["files"][rt].append(base)
     return linked, unlinked
+
+
+_COL_BUCKET = {"K": "其他", "L": "REACH", "Y": "RoHS"}   # 材质证据列→files桶(同 main_filetree.COL_BUCKET)
+
+
+def auto_place_by_learning(filename, proposals):
+    """无监督命中(成长学习·红线): 查学习库→自动落位动作。仅强键+足票才强落, 防跨单串味/错挂。
+    → {动作:'col', mi, col, 桶} | {动作:'slot', 槽, 零件} | None(exclude/弱命中/材质定位失败 都不强落)。"""
+    from hitl import dicts
+    look = dicts.lookup_assign(filename)
+    目标 = look.get("目标")
+    if not 目标 or look.get("目标票", 0) < 1 or not dicts._strong_key(filename):
+        return None
+    if 目标.startswith("col:"):
+        材质 = (look.get("材质") or "").strip()
+        if not 材质:
+            return None
+        for i, p in enumerate(proposals):
+            if not p.get("豁免") and (p.get("材质") or "").strip() == 材质:   # 定位到非豁免同名材质才落
+                col = 目标.split(":", 1)[1]
+                return {"动作": "col", "mi": i, "col": col, "桶": _COL_BUCKET.get(col, "其他")}
+        return None                                # 定位不到→不强落(降级弱建议, 防错挂材质)
+    if 目标.startswith("slot:"):
+        return {"动作": "slot", "槽": 目标.split(":", 1)[1], "零件": (look.get("零件") or "").strip()}
+    return None                                    # exclude 默认不自动(只建议侧), 守红线
+
+
+def learned_slot_assignments(materials_dir, proposals):
+    """无监督命中·横排/页级槽: 扫料堆, 学习命中 slot 目标的文件 → {文件: {槽, 零件}}(供 server 并入部件归属, 人工优先)。"""
+    out = {}
+    src_set = {p.get("源文件") for p in proposals}
+    for f in sorted(glob.glob(os.path.join(materials_dir, "*.pdf"))):
+        base = os.path.basename(f)
+        if base in src_set:
+            continue
+        auto = auto_place_by_learning(base, proposals)
+        if auto and auto["动作"] == "slot":
+            out[base] = {"槽": auto["槽"], "零件": auto["零件"]}
+    return out
 
 
 _TYPE_COL = {"RoHS": "Y", "REACH": "L", "SVHC": "L", "其他": "K", "MSDS": "K"}

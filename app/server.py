@@ -190,13 +190,17 @@ async def bom_confirm(job: str, request: Request):
     s.update(body); s["confirmed"] = True
     # 文件↔材质链(M2.4 OLE放置据此落K/L/Y格); 认不准的报告留确认环②人工拖
     try:
-        from hitl.file_link import link_materials, report_type
+        from hitl.file_link import link_materials, report_type, learned_slot_assignments
         from hitl.file_router import route as _route
         from hitl.file_account import account_files
         from hitl.material_extract import enrich_rohs
         linked, unlinked = link_materials(state.materials_dir(job), s.get("materials", []))
         enrich_rohs(linked, state.materials_dir(job))        # B 读 RoHS 报告填 10 项值(+报告号/日期)
         s["materials"] = linked
+        pg = dict(s.get("部件归属") or {})                    # 无监督命中·横排/页级槽: 学过的料号文件自动归槽(人工优先, 不覆盖)
+        for fn, a in learned_slot_assignments(state.materials_dir(job), linked).items():
+            pg.setdefault(fn, a)
+        s["部件归属"] = pg
         # 零丢失: 覆盖审计算出全部待归位(含 route=∅未识别 + 豁免材质的文件), 统一进认不准/待归位池
         acc = account_files(state.materials_dir(job), linked, s.get("部件归属"),
                             s.get("excluded_files"), state.drawing_pdf(job))
@@ -352,8 +356,9 @@ async def filetree_confirm(job: str, request: Request):
     s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json", {})
     s.update(body); s["confirmed_filetree"] = True
     state.save_json(job, "stage3_filetree.json", s)
-    try:                                              # 成长型: 学习本单确认的报告归属(操作员真值→下单建议更准)
+    try:                                              # 成长型: 学习本单确认的全部归位真值→下单无监督命中(目标维度: 材质列/横排槽/排除)
         from hitl import dicts
+        _TYP_COL = {"其他": "col:K", "REACH": "col:L", "SVHC": "col:L", "RoHS": "col:Y"}   # MSDS=源, 不学目标
         for m in s.get("materials", []):
             if m.get("豁免"):
                 continue
@@ -362,10 +367,15 @@ async def filetree_confirm(job: str, request: Request):
                 v = fz.get(typ)
                 for f in ([v] if isinstance(v, str) else (v or [])):
                     if f:
-                        dicts.learn_assign(f, 材质=m.get("材质"), 零件=m.get("零件"))
+                        dicts.learn_assign(f, 材质=m.get("材质"), 零件=m.get("零件"), 目标=_TYP_COL.get(typ))
         for fn, v in (s.get("部件归属") or {}).items():    # 值支持 {槽,零件}(新)或 零件str(旧)
+            槽 = v.get("槽") if isinstance(v, dict) else None
             零件 = v.get("零件") if isinstance(v, dict) else v
-            dicts.learn_assign(fn, 零件=零件)
+            dicts.learn_assign(fn, 零件=零件, 目标=("slot:" + 槽) if 槽 else None)
+        for e in (s.get("excluded_files") or []):     # 排除也学(命中侧默认只建议不自动, 见 auto_place_by_learning)
+            fn = e.get("文件") if isinstance(e, dict) else e
+            if fn:
+                dicts.learn_assign(fn, 目标="exclude")
     except Exception:
         pass
     proj = state.load_json(job, "project.json", {"job": job})
@@ -530,6 +540,19 @@ async def learn_dict(request: Request):
         dicts.add_supplier(s)
     if "part_order" in body:
         dicts.set_part_order(body["part_order"])
+    return dicts.all_dicts()
+
+
+@app.delete("/api/dict/assign")
+async def forget_assign_ep(request: Request):
+    """清理归属学习库(可见可清理红线): body={key?, 维度?, 值?} 删整条/某维度/某项。返回更新后全字典。"""
+    from hitl import dicts
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    dicts.forget_assign(body.get("key"), body.get("维度"), body.get("值"))
     return dicts.all_dicts()
 
 
