@@ -95,3 +95,11 @@ def test_镀锡线REACH归镀锡铜不被锡吞():
              {"材质": "镀锡铜", "源文件": "MSDS-镀锡铜线.pdf"}]
     ident = [_ident(p) + (str(p.get("材质") or ""),) for p in props]
     assert _match_report("镀锡线REACH -英文-CANEC25010225201 2025.05.20.pdf", ident) == 1
+
+
+def test_PVC料名码放行可链():
+    from hitl.file_link import _usable_tok
+    assert _usable_tok("PVC") and _usable_tok("PA")
+    props = [{"材质": "PVC", "源文件": "PVC  MSDS.pdf"}]
+    ident = [_ident(p) + (str(p.get("材质") or ""),) for p in props]
+    assert _match_report("永超-PVC黑色-REACH SVHC-中文.pdf", ident) == 0   # PVC token(3字母)放行→链上

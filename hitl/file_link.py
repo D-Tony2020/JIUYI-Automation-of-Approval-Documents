@@ -47,10 +47,14 @@ def _ident(material):
     return toks, _color(name)
 
 
+# 确定料名码: 短(<4位)但是真材质名(非报告号撞码), 白名单放行报告匹配。与短合金码黑名单(C26/C5撞报告号)分离。
+_NAME_CODES = {"PVC", "PA", "PA6", "PE", "PP", "PC", "PU", "POM", "ABS", "EVA", "PET", "PPS"}
+
+
 def _usable_tok(t):
-    """可用于报告匹配的 token: 含中文 或 字母数字≥4位。丢单字元素(铜/锡)+短合金码(C26/C5)——
-    后者会撞报告号数字(端子号 SHAEC26005 含 'C26' → 误吸到镀锡铜)。保 C5191/PA66/镀锡/端子。"""
-    return len(t) >= 4 or any("一" <= c <= "鿿" for c in t)
+    """可用于报告匹配的 token: 含中文 / 字母数字≥4位 / 确定料名码白名单。丢单字元素(铜/锡)+短合金码(C26/C5)——
+    后者撞报告号数字(端子号 SHAEC26005 含 'C26' → 误吸到镀锡铜)。保 C5191/PA66/镀锡/端子/PVC。"""
+    return len(t) >= 4 or t in _NAME_CODES or any("一" <= c <= "鿿" for c in t)
 
 
 def _match_report(filename, mats_ident):
@@ -59,15 +63,25 @@ def _match_report(filename, mats_ident):
     被排在前的泛料(锡)吞掉(锡⊂镀锡铜)。mats_ident 项为 (toks,mcol) 或 (toks,mcol,料名)。"""
     fn = _norm(filename)
     fcol = _color(filename)
-    best, bs, bn = None, 0, -1
+    best, bs, bnm = None, 0, ""
     for i, item in enumerate(mats_ident):
         toks, mcol = item[0], item[1]
-        nm = item[2] if len(item) > 2 else ""
+        nm = _norm(item[2]) if len(item) > 2 else ""
         s = max((len(t) for t in toks if _usable_tok(t) and t in fn), default=0)
         if s and mcol:                               # 已命中料名→颜色消歧(白/黑油墨)
             s = s + 6 if fcol == mcol else (s - 10 if fcol and fcol != mcol else s)
-        if s > 0 and (s > bs or (s == bs and len(nm) > bn)):
-            best, bs, bn = i, s, len(nm)
+        if s <= 0:
+            continue
+        take = s > bs
+        if s == bs and best is not None:             # 同分→偏更具体料: 名互为子串取超串(锡⊂镀锡铜→镀锡铜胜, 不靠脆弱的len)
+            if bnm and nm and bnm != nm and bnm in nm:
+                take = True                          # 当前名是已选名的超串(已选更泛)→当前胜
+            elif bnm and nm and nm in bnm:
+                take = False                         # 已选是超串(更具体)→保持
+            else:
+                take = len(nm) > len(bnm)            # 无子串关系→回退长名
+        if take:
+            best, bs, bnm = i, s, nm
     return best if bs > 0 else None
 
 
