@@ -240,7 +240,8 @@ def embed_many(src_xlsx, out_xlsx, specs):
             # 两种定位: 结构驱动(单元格行列→读该格Left/Top, 材质表用) / 绝对(L,T, 其他表用)
             if spec.get("row") and spec.get("col"):
                 cell = sh.Cells(spec["row"], spec["col"])
-                left, top = cell.Left + 2, cell.Top + 2  # 内缩2点, 避开边界取整(否则锚点算到前一格)
+                dup = spec.get("dup", 0)             # 同格多份(如一料2REACH)横向错开, 防块合并列下纵向顺延被吞→重叠; dup=0 与原行为一致
+                left, top = cell.Left + 2 + dup * (spec["W"] + 4), cell.Top + 2  # 内缩2点避边界取整
             else:
                 left, top = spec["L"], spec["T"]
             obj.Left, obj.Top, obj.Width, obj.Height = left, top, spec["W"], spec["H"]

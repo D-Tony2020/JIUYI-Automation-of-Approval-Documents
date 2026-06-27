@@ -28,8 +28,9 @@ def part_top(name):
 
 
 def mat_anchors_nocrutch(bom, mt_specs, start_row=DATA_TOP):
-    """材质表 OLE 内容驱动落位 [(row, col)]:每份证据落其料的首块首行×证据列(K/L/Y);
-    同(行,列)多份则块内顺延行。无 golden 拐杖, 料行由 compute_layout(bom) 结构算出。"""
+    """材质表 OLE 内容驱动落位 [(row, col)]:每份证据落其料的首块首行×证据列(K/L/Y)。
+    同(行,列)多份(如一料2REACH)不再纵向顺延行(K/L/Y在块合并列内, 顺延行会被 merge 吞掉→同坐标重叠),
+    统一落首行 + 在 spec 标 dup 序号, 由 embed_many 横向错开。料行由 compute_layout(bom) 结构算出。"""
     layout = compute_layout(bom, start_row)
     mat_first = [M["blocks"][0]["first"] if M["blocks"] else M["first"]
                  for P in layout["parts"] for M in P["materials"]]
@@ -38,7 +39,7 @@ def mat_anchors_nocrutch(bom, mt_specs, start_row=DATA_TOP):
         mi = s.get("mat_idx")
         row0 = mat_first[mi] if (mi is not None and mi < len(mat_first)) else (mat_first[0] if mat_first else start_row)
         col = s["col"]
-        rr = row0 + used.get((row0, col), 0)
-        used[(row0, col)] = used.get((row0, col), 0) + 1
-        res.append((rr, col))
+        s["dup"] = used.get((row0, col), 0)        # 同(行,列)第N份(0基), 供 embed 横向错开
+        used[(row0, col)] = s["dup"] + 1
+        res.append((row0, col))
     return res

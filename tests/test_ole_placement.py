@@ -133,10 +133,12 @@ def test_材质表落点不落同一格():
     assert len(anchors) == len(set(anchors))   # 无两OLE落同一(row,col)
 
 
-def test_材质表同料同列堆叠到不同行():
-    """防御: 万一同料同证据列2份(本应去重), 也须堆到不同行(曾因29px<42px重叠)。"""
+def test_材质表同料同列多份_dup横向错开():
+    """同料同证据列2份(真双份, 如2个REACH): 行号不再纵向顺延(K/L/Y在块合并列内, 顺延行被merge吞→同坐标重叠),
+    统一落同(row,col)但 spec 标 dup 递增, 由 embed_many 横向错开。"""
     from hitl.ole_placement import mat_anchors_nocrutch
     bom = [{"零件": "导线", "materials": [{"材质": "PVC", "blocks": [{"成份": [{"成份名称": "x"}]}]}]}]
     specs = [{"mat_idx": 0, "col": 11}, {"mat_idx": 0, "col": 11}]
     anchors = mat_anchors_nocrutch(bom, specs)
-    assert anchors[0] != anchors[1]
+    assert anchors[0] == anchors[1]                          # 同(row,col)(不再靠行错开)
+    assert specs[0]["dup"] == 0 and specs[1]["dup"] == 1     # dup 递增→embed 横向错开不重叠

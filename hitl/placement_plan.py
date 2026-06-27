@@ -26,6 +26,7 @@ _TYPE_ORDER = ("MSDS", "RoHS", "REACH", "SVHC", "其他")
 
 # 单 OLE 表固定模板位(取自 golden, 各案近恒定; 同 run_m21.DEFAULT_ANCHOR)
 DEFAULT_ANCHOR = {"图纸": (183, 266, 152, 42), "包装": (208, 271, 112, 60), "出货": (193, 261, 159, 42)}
+DRAWING_W, DRAWING_H = 200, 130          # 图纸OLE尺寸(原硬编码320×220过大占大半页, 缩到~37%页宽·3:2适配横版图)
 # 短名 → GRID 键(网格类表)
 _GRID_KEY = {"部件承认": "部件承认书", "UL": "UL证明", "信赖性": "信赖性"}
 _SHORT_KW = {"材质表": "材质成分", "材质证明": "材质证明", "部件承认": "部件",
@@ -101,12 +102,18 @@ def material_specs(stage2_bom, materials_dir):
     mt_sheet = _find_sheet(sheet_names, "材质表")
     cert_sheet = _find_sheet(sheet_names, "材质证明")
 
+    partcat = _part_category(materials)          # 零件→部件类别标签(线材/胶座端子/套管)
     specs, mt_specs = [], []
+    seen_mt = set()
     for mi, m in enumerate(ordered):
         名 = (m.get("材质") or "").strip()
         for typ in _TYPE_ORDER:
             col = TYPE_COL[typ]
             for fn in _mat_files(m, typ):
+                key = (mi, col, os.path.basename(fn))   # 同材质同列同文件去重(防 REACH+SVHC 同名双挂→2个重叠OLE)
+                if key in seen_mt:
+                    continue
+                seen_mt.add(key)
                 sp = {"sheet": mt_sheet, "pdf": os.path.join(materials_dir, fn), "short": "材质表",
                       "mat_idx": mi, "col": col, "W": 56, "H": 42, "label": f"{名} {typ}".strip()}
                 mt_specs.append(sp)
@@ -115,14 +122,19 @@ def material_specs(stage2_bom, materials_dir):
         sp["row"], sp["col"] = r, c
 
     cert_pos = matcert_anchors(nested)           # [(L,T)] 按零件分组横排, 序 == ordered
+    seen_part = set()
     for mi, m in enumerate(ordered):
         msds = _mat_files(m, "MSDS")
         if not msds or mi >= len(cert_pos):
             continue
         L, T = cert_pos[mi]
+        零件 = (m.get("零件") or "").strip()
+        bj = partcat.get(零件, "") if (零件 and 零件 not in seen_part) else ""   # 每零件组首张标部件类别(线材/胶座端子/套管, 如golden)
+        if 零件:
+            seen_part.add(零件)
         specs.append({"sheet": cert_sheet, "pdf": os.path.join(materials_dir, msds[0]),
                       "short": "材质证明", "L": L, "T": T, "W": MATCERT_W, "H": MATCERT_H,
-                      "label": (m.get("材质") or "").strip()})
+                      "label": (m.get("材质") or "").strip(), "部件标签": bj})
     return specs, nested, ordered
 
 
@@ -243,7 +255,7 @@ def pile_specs(materials_dir, sheet_names, drawing_pdf=None, materials=None, par
         L, T, W, H = DEFAULT_ANCHOR["图纸"]
         if fs:
             specs.append({"sheet": fs, "pdf": drawing_pdf, "short": "图纸",
-                          "L": L, "T": T, "W": 320, "H": 220, "label": "图纸"})
+                          "L": L, "T": T, "W": DRAWING_W, "H": DRAWING_H, "label": "图纸"})
     return specs
 
 

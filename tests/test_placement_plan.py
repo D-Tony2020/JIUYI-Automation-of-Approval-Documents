@@ -175,3 +175,39 @@ def test_expected_slots():
     slots = expected_slots(nested)
     assert slots["材质证明书"] == 3                            # 一材一证
     assert slots["部件承认书"] == 2                            # 采购件=导线+端子(无工艺料锡)
+
+
+def test_同名报告REACH_SVHC双挂去重(tmp_path):
+    # 一文件同时挂 REACH+SVHC(同物理L列) → 材质表只生成1个OLE(去重), 不再2个重叠
+    from hitl.placement_plan import build_specs
+    sheets = ["7材质成分展开表", "8材质证明书"]
+    stage = {"materials": [{"材质": "PVC", "零件": "导线", "材质类别": "线材",
+                            "files": {"MSDS": "PVC.pdf", "REACH": ["X.pdf"], "SVHC": ["X.pdf"]}}],
+             "_sheet_names": sheets}
+    specs, _, _ = build_specs(stage, sheets, str(tmp_path))
+    l = [s for s in specs if s.get("short") == "材质表" and s.get("col") == 12]
+    assert len(l) == 1                                   # X.pdf 双挂→只1个L列OLE
+
+
+def test_真双份REACH_dup横向错开(tmp_path):
+    from hitl.placement_plan import build_specs
+    sheets = ["7材质成分展开表", "8材质证明书"]
+    stage = {"materials": [{"材质": "PVC", "零件": "导线", "材质类别": "线材",
+                            "files": {"MSDS": "PVC.pdf", "REACH": ["红.pdf", "黑.pdf"]}}],
+             "_sheet_names": sheets}
+    specs, _, _ = build_specs(stage, sheets, str(tmp_path))
+    l = sorted([s for s in specs if s.get("short") == "材质表" and s.get("col") == 12], key=lambda s: s.get("dup", 0))
+    assert len(l) == 2 and l[0]["dup"] == 0 and l[1]["dup"] == 1 and l[0]["row"] == l[1]["row"]   # 同行+dup错开
+
+
+def test_材质证明组首张带部件标签(tmp_path):
+    from hitl.placement_plan import build_specs
+    sheets = ["7材质成分展开表", "8材质证明书"]
+    stage = {"materials": [
+        {"材质": "镀锡铜", "零件": "导线", "材质类别": "线材", "files": {"MSDS": "a.pdf"}},
+        {"材质": "PVC", "零件": "导线", "材质类别": "线材", "files": {"MSDS": "b.pdf"}},
+        {"材质": "PA66", "零件": "胶座端子", "材质类别": "胶座", "files": {"MSDS": "c.pdf"}}],
+        "_sheet_names": sheets}
+    specs, _, _ = build_specs(stage, sheets, str(tmp_path))
+    tags = [s.get("部件标签", "") for s in specs if s.get("short") == "材质证明"]
+    assert tags == ["线材", "", "胶座"]                  # 导线组首张标·次张空; 胶座端子组首张标
