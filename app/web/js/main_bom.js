@@ -214,7 +214,16 @@ function bind() {
     el.addEventListener("drop", (e) => { if (S.pgDrag == null) return; e.preventDefault(); e.stopPropagation(); el.classList.remove("pg-over"); reorderParts(S.pgDrag, el.dataset.pgdrag); });
   });
   document.querySelectorAll("[data-matdrag]").forEach((el) => {
-    el.addEventListener("dragstart", (e) => { e.stopPropagation(); S.matDrag = +el.dataset.matdrag; S.pgDrag = null; e.dataTransfer.effectAllowed = "move"; });
+    el.addEventListener("dragstart", (e) => {
+      e.stopPropagation(); S.matDrag = +el.dataset.matdrag; S.pgDrag = null; e.dataTransfer.effectAllowed = "move";
+      document.querySelectorAll(".mat-card[data-i]").forEach((c) => { if (+c.dataset.i !== S.matDrag) c.classList.add("drop-active"); });  // 合法落点持续高亮
+    });
+    el.addEventListener("dragend", () => document.querySelectorAll(".drop-active").forEach((c) => c.classList.remove("drop-active")));
+  });
+  document.querySelectorAll(".mat-card[data-i]").forEach((el) => {       // 拖材质卡→放到目标卡前: 同零件内排序 / 跨零件移位(均传递到装表)
+    el.addEventListener("dragover", (e) => { if (S.matDrag != null && +el.dataset.i !== S.matDrag) { e.preventDefault(); el.classList.add("card-drop-over"); } });
+    el.addEventListener("dragleave", () => el.classList.remove("card-drop-over"));
+    el.addEventListener("drop", (e) => { if (S.matDrag == null) return; e.preventDefault(); e.stopPropagation(); el.classList.remove("card-drop-over"); reorderMatTo(S.matDrag, +el.dataset.i); S.matDrag = null; });
   });
   document.querySelectorAll("[data-partdrop]").forEach((el) => {           // 材质拖到别的零件组→改归属(传递到装表)
     el.addEventListener("dragover", (e) => { if (S.matDrag != null) { e.preventDefault(); el.classList.add("matdrop-over"); } });
@@ -258,6 +267,15 @@ async function setPart(i, val) {
     if (!p) { render(); return; }
     S.materials[i].零件 = p;
   } else S.materials[i].零件 = val;
+  save(); render();
+}
+
+function reorderMatTo(from, toIdx) {          // 拖材质卡到目标卡前: 同零件内调序(老板要的) / 跨零件移到该位置; 数组序==装表展开序→连续性
+  if (from == null || from === toIdx) return;
+  const m = S.materials[from], target = S.materials[toIdx];
+  m.零件 = (target.零件 || "").trim();        // 落到目标卡所在零件(同零件=纯排序; 异零件=移位并改归属)
+  S.materials.splice(from, 1);
+  S.materials.splice(S.materials.indexOf(target), 0, m);   // 插到目标卡前
   save(); render();
 }
 

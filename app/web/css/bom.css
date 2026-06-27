@@ -89,3 +89,5 @@ table.comp tr.nocas input.cmp { color: #b45309; }
 .matdraghandle { cursor: grab; color: #9ca3af; font-size: 13px; user-select: none; padding: 0 2px; }
 .matdraghandle:active { cursor: grabbing; }
 .part-group.matdrop-over, .unclaimed.matdrop-over { background: #ecfdf5; box-shadow: 0 0 0 2px #16a34a inset; border-radius: 6px; }
+.mat-card.drop-active { outline: 1px dashed var(--c-drop); outline-offset: -1px; }        /* 拖材质时合法落点高亮 */
+.mat-card.card-drop-over { box-shadow: 0 -3px 0 var(--c-drop) inset; background: #f0f9ff; } /* 放到此卡前 */

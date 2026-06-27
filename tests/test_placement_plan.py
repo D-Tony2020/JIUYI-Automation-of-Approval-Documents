@@ -62,6 +62,17 @@ def test_part_category部件类别标签():
     assert cat["热缩管"] == "套管"
 
 
+def test_同零件内材质拖序传递装表():
+    mats = [{"零件": "导线", "材质": "PVC", "files": {}}, {"零件": "导线", "材质": "镀锡铜", "files": {}},
+            {"零件": "导线", "材质": "白墨", "files": {}}]
+    nested, _ = stage2_to_nested_bom(mats)
+    assert [m["材质"] for m in nested[0]["materials"]] == ["PVC", "镀锡铜", "白墨"]   # 同零件内=数组序
+    mats2 = [mats[2], mats[0], mats[1]]                                          # 拖动: 白墨提到首
+    nested2, ordered2 = stage2_to_nested_bom(mats2)
+    assert [m["材质"] for m in nested2[0]["materials"]] == ["白墨", "PVC", "镀锡铜"]  # 装表跟随新序
+    assert [m["材质"] for m in ordered2] == ["白墨", "PVC", "镀锡铜"]                # OLE mat_idx 同步
+
+
 def test_拖动改材质归属传递装表():
     # 模拟③把"镀锡铜"从导线拖到端子(moveMatToPart 改 零件) → 装表分组须跟随
     mats = [{"零件": "导线", "材质": "PVC", "files": {}},
