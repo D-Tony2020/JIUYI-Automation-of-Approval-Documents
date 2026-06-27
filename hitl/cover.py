@@ -7,7 +7,7 @@
 - 签字人 C21/D21/E21 与供应商档案 C27/C29/C33 = 模板静态，工具不碰（自检其未被改动）
 """
 from .harness import write_cell, read_cell
-from .category import extract_category
+from .category import extract_category, normalize_name
 
 COVER_SHEET = "封面"
 
@@ -23,20 +23,26 @@ STATIC_CELLS = {
 
 
 def fill_cover(ws, drawing_meta):
-    """填封面三格。drawing_meta = {名称, 品号, 版本}（图纸元数据 HITL 复核结果）。
+    """填封面三格。drawing_meta = {名称, 品号, 版本, 品类?}（图纸元数据 HITL 复核结果）。
 
-    返回 expected：含三格目标值 + 溯源。品类词词典外则抛错（交人工）。
+    软进硬出: 永不 raise。品类词来源优先级 品类(操作员确认) > 名称归一+词典+学习;
+    全失败→D12 暂留归一后原文(老板拍板A·留痕软门), expected 标 _unknown_category=True 供上层软预警/硬门判定。
     """
-    cat, ok = extract_category(drawing_meta["名称"])
-    if not ok:
-        raise ValueError(
-            f"品类词未识别，需人工确认：{drawing_meta['名称']!r}（不在词典内）"
-        )
+    name = str(drawing_meta.get("名称") or "")
+    override = str(drawing_meta.get("品类") or "").strip()
+    if override:
+        cat, unknown = override, False                    # 操作员现场确认值, 直采
+    else:
+        cat, ok = extract_category(name)
+        unknown = not ok
+        if unknown:
+            cat = normalize_name(name)                    # 暂留归一原文(留痕), 由导出端硬门保证非空
     write_cell(ws, "D12", cat)
     write_cell(ws, "D14", drawing_meta["品号"])
     write_cell(ws, "D16", drawing_meta["版本"])
     return {
         "D12": cat, "D14": drawing_meta["品号"], "D16": drawing_meta["版本"],
+        "_unknown_category": unknown, "_raw_name": name,
         "_source": {"D12": "图纸.名称→品类词", "D14": "图纸.品号", "D16": "图纸.版本REV"},
     }
 

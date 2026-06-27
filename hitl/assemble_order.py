@@ -32,7 +32,8 @@ def plan_only(stage2_bom, drawing_meta, dimensions, materials_dir, drawing_pdf, 
     nested, _ordered = stage2_to_nested_bom(stage2_bom.get("materials", []))
     name = drawing_meta.get("名称") or drawing_meta.get("品类") or "导线"
     data = {"drawing_meta": {"名称": name, "品号": drawing_meta.get("品号", ""),
-                             "版本": drawing_meta.get("版本", "")},
+                             "版本": drawing_meta.get("版本", ""),
+                             "品类": drawing_meta.get("品类", "")},   # 操作员确认值→fill_cover override
             "product": {"材料名称": name, "填表日期": datetime.date(2026, 6, 25)},
             "bom": nested, "dimensions": dimensions or []}
     cell = os.path.join(outdir, "_cell.xlsx")
@@ -94,7 +95,11 @@ def assemble_job(job, blank=BLANK):
     if not s3 or not s3.get("materials"):
         return {"ok": False, "err": "无 BOM/文件树数据(先完成③④)"}
     s1 = state.load_json(job, "stage1_drawing.json", {})
-    meta = {"名称": s1.get("名称") or "", "品号": s1.get("品号", ""), "版本": s1.get("版本", "")}
+    meta = {"名称": s1.get("名称") or "", "品号": s1.get("品号", ""), "版本": s1.get("版本", ""),
+            "品类": s1.get("品类", "")}                 # 操作员④确认值, 优先于名称归一
+    from .category import normalize_name                # 软进硬出·唯一硬门: D12 不能为空
+    if not (str(meta["品类"]).strip() or normalize_name(meta["名称"]).strip()):
+        return {"ok": False, "err": "封面品类词无来源(图纸名称为空), 请到①补图纸名称或④确认品类词"}
     dims = dims_from_stage1(s1)
     photos = [os.path.join(state.photos_dir(job), p) for p in state.photos_list(job)]
     code = meta["品号"] or job

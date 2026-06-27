@@ -4,7 +4,7 @@ import { ackKey, exportSummary } from "./exportstate.js";
 import { renderGate } from "./gate.js";
 import { dlgConfirm, toast } from "./dialog.js";
 
-const S = { job: null, photos: [], warnings: [], trace: [], acked: new Set() };
+const S = { job: null, photos: [], warnings: [], trace: [], acked: new Set(), cats: [] };
 const $ = (id) => document.getElementById(id);
 
 async function boot() {
@@ -21,6 +21,7 @@ async function boot() {
   try {
     S.photos = (await api.listPhotos(job)).photos || [];
   } catch { /* 新单 */ }
+  try { S.cats = (await api.categoryDict()).categories || []; } catch { S.cats = []; }
   await loadPreflight();
   render();
 }
@@ -63,9 +64,19 @@ function render() {
   $("photogrid").innerHTML = S.photos.map((n) =>
     `<div class="photo-thumb"><img src="${api.photoUrl(S.job, n)}" alt="${esc(n)}"><button class="x" data-del="${esc(n)}">×</button></div>`).join("")
     || `<div class="drag-hint">还没照片 · 选择文件或 Ctrl+V 粘贴</div>`;
-  // 软预警 + 已知悉勾
-  $("warnings").innerHTML = S.warnings.length ? S.warnings.map((w) => {
+  // 软预警 + 已知悉勾; 品类词预警特殊渲染: 内联下拉确认(一步即学会) + 仍保留已知悉(带预警导出)
+  const opts = (S.cats || []).map((c) => `<option value="${esc(c)}">`).join("");
+  $("warnings").innerHTML = S.warnings.length ? `<datalist id="catdict">${opts}</datalist>` + S.warnings.map((w) => {
     const k = ackKey(w), on = S.acked.has(k);
+    if (w.类型 === "品类词") {
+      return `<div class="warn-item warn-cat ${on ? "acked" : ""}">
+        <span class="warn-type">${esc(w.类型)}</span> <span class="warn-msg">${esc(w.文案)}</span>
+        <span class="cat-fix">
+          <input class="cat-input" list="catdict" placeholder="选/填品类词" value="">
+          <button class="passbtn" data-confirm-cat="${esc(w.名称 || "")}">确认并记住</button>
+        </span>
+        <label class="ack-inline"><input type="checkbox" data-ack="${esc(k)}" ${on ? "checked" : ""}> 已知悉</label></div>`;
+    }
     return `<label class="warn-item ${on ? "acked" : ""}"><input type="checkbox" data-ack="${esc(k)}" ${on ? "checked" : ""}>
       <span class="warn-type">${esc(w.类型)}</span> ${esc(w.文案)} <em>已知悉</em></label>`;
   }).join("") : `<div class="all-ok">✓ 无预警，齐套</div>`;
@@ -92,6 +103,18 @@ function bind() {
     el.checked ? S.acked.add(el.dataset.ack) : S.acked.delete(el.dataset.ack);
     api.exportAcknowledge(S.job, [...S.acked]).catch(() => {});
     render();
+  });
+  document.querySelectorAll("[data-confirm-cat]").forEach((el) => el.onclick = async () => {
+    const 品类 = (el.parentElement.querySelector(".cat-input").value || "").trim();
+    if (!品类) { toast("请先选择或填写品类词", "err"); return; }
+    el.disabled = true;
+    try {
+      await api.confirmCategory(S.job, el.dataset.confirmCat, 品类);
+      toast(`已确认：${el.dataset.confirmCat || "本单"} → ${品类}（已记住，下次自动）`, "ok");
+      try { S.cats = (await api.categoryDict()).categories || S.cats; } catch { /* 保留 */ }
+      await loadPreflight();                                  // 品类已写回→该预警消失
+      render();
+    } catch (e) { toast("确认失败：" + e.message, "err"); el.disabled = false; }
   });
 }
 

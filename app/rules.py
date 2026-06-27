@@ -101,13 +101,23 @@ def _has_file(m, typ):
     return bool(v if isinstance(v, str) else (v or []))
 
 
-def export_preflight(stage3, photos_count):
-    """⑤导出预检(M2.5, **全软不硬拦**): 照片/MSDS/第三方报告/待拖 缺 → 软预警; trace 溯源(含报告日期)。
+def export_preflight(stage3, photos_count, drawing_name="", category_confirmed=""):
+    """⑤导出预检(M2.5, **全软不硬拦**): 品类词/照片/MSDS/第三方报告/待拖 缺 → 软预警; trace 溯源(含报告日期)。
 
     老板决: 不做有效期判定(只在 trace 显报告日期); 全软(操作员勾已知悉即可导出)。
+    品类词: 名称归一+词典+学习仍未识别且未现场确认 → 软预警(④可内联确认或勾已知悉), 绝不硬挡。
     """
     mats = stage3.get("materials") or []
     warnings = []
+    if not str(category_confirmed or "").strip():
+        try:
+            from hitl.category import extract_category
+            _cat, ok = extract_category(drawing_name)
+        except Exception:
+            ok = True                                  # 取词异常不误报(导出端硬门兜底)
+        if not ok and str(drawing_name or "").strip():
+            warnings.append({"类型": "品类词", "名称": str(drawing_name),
+                             "文案": f"封面品类词未识别：{drawing_name}（已暂留原文，可现场确认归类或勾已知悉导出）"})
     if photos_count < 2:
         warnings.append({"类型": "照片", "文案": f"样品照片仅 {photos_count} 张（建议 ≥2）"})
     for i, m in enumerate(mats):

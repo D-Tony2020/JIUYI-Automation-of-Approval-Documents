@@ -135,6 +135,16 @@ export async function exportAssemble(job, acknowledged) {
   });
 }
 
+export async function categoryDict() {
+  return _json(`/api/category/dict`);                    // 品类词下拉: 内置+已学
+}
+
+export async function confirmCategory(job, 名称, 品类) {
+  return _json(`/api/order/${job}/category`, {            // 确认封面品类词→学习库+写回本单
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ 名称, 品类 }),
+  });
+}
+
 export function downloadUrl(job) {
   return `/api/export/${job}/download`;
 }

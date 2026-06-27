@@ -17,7 +17,8 @@ DATA = os.path.join(userdata.USER_DATA_DIR, "dicts")
 _SEED = os.path.join(userdata.resource_base(), "hitl", "data")
 _FILES = {"alias": "材质简称字典.json", "catpart": "材质类别零件字典.json",
           "supplier": "供应商历史.json", "part_order": "零件顺序.json",
-          "assign": "归属学习.json"}                  # 报告归属在线学习(成长型)
+          "assign": "归属学习.json",                  # 报告归属在线学习(成长型)
+          "category": "品类词字典.json"}              # 封面D12品类词学习(成长型: 名称→品类)
 
 
 def ensure_seeded():
@@ -147,6 +148,42 @@ def lookup_assign(filename):
         if agg[fld]:
             out[fld] = max(agg[fld].items(), key=lambda kv: kv[1])[0]
     return out
+
+
+def category_dict():
+    return _load("category", {})         # {规范化完整名称: 品类词}
+
+
+_PAREN_STRIP = re.compile(r"[（(\[【][^（()）\[\]【】]*[)）\]】]")
+
+
+def learn_category(名称, 品类):
+    """记忆: 完整图纸名称(规范化)→品类词(操作员④确认的=真值, 成长型)。
+    完整名精确 key 防跨单串味; 下次同名(及去括号色变体)自动命中。"""
+    key = _norm(名称)
+    品类 = str(品类 or "").strip()
+    if not key or not 品类:
+        return category_dict()
+    t = category_dict()
+    t[key] = 品类
+    _save("category", t)
+    return t
+
+
+def lookup_category(名称):
+    """查品类词学习库: 先完整名精确; 再'去括号修饰后相等'弱回退(导线(黄)学过→导线(红)命中)。无→''。"""
+    key = _norm(名称)
+    if not key:
+        return ""
+    t = category_dict()
+    if key in t:
+        return t[key]
+    bare = _PAREN_STRIP.sub("", key).strip()
+    if bare:
+        for k, v in t.items():
+            if _PAREN_STRIP.sub("", k).strip() == bare:
+                return v
+    return ""
 
 
 def learn_alias(原文, std):

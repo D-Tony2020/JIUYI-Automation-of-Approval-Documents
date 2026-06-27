@@ -274,7 +274,8 @@ def overview(job: str):
         except Exception:
             ph = 0
         try:
-            warns = rules.export_preflight(s3, ph).get("warnings", [])
+            warns = rules.export_preflight(s3, ph, drawing_name=(s1 or {}).get("名称", ""),
+                                           category_confirmed=(s1 or {}).get("品类", "")).get("warnings", [])
         except Exception:
             warns = []
         proj = state.load_json(job, "project.json") or {}
@@ -360,9 +361,41 @@ def delete_photo(job: str, name: str):
 
 @app.get("/api/export/{job}/preflight")
 def export_preflight_ep(job: str):
-    """导出预检(全软, 零 COM 快): 软预警 + 溯源(含报告日期)。"""
+    """导出预检(全软, 零 COM 快): 软预警(含品类词) + 溯源(含报告日期)。"""
     s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json", {})
-    return rules.export_preflight(s, len(state.photos_list(job)))
+    s1 = state.load_json(job, "stage1_drawing.json", {})
+    return rules.export_preflight(s, len(state.photos_list(job)),
+                                  drawing_name=s1.get("名称", ""), category_confirmed=s1.get("品类", ""))
+
+
+@app.get("/api/category/dict")
+def category_dict_ep():
+    """前端品类词下拉: 内置词典 + 已学品类(去重保序)。"""
+    from hitl import category, dicts
+    learned = sorted({str(v).strip() for v in dicts.category_dict().values() if str(v).strip()})
+    out, seen = [], set()
+    for w in list(category.CATEGORY_DICT) + learned:
+        if w and w not in seen:
+            seen.add(w)
+            out.append(w)
+    return {"categories": out}
+
+
+@app.post("/api/order/{job}/category")
+async def confirm_category(job: str, request: Request):
+    """操作员确认封面品类词: 学习库回写(成长型·跨单/色变体) + 写回本单 stage1(本单装配即时命中)。"""
+    body = await request.json()
+    名称 = str(body.get("名称") or "").strip()
+    品类 = str(body.get("品类") or "").strip()
+    if not 品类:
+        raise HTTPException(400, "品类词不能为空")
+    from hitl import dicts
+    if 名称:
+        dicts.learn_category(名称, 品类)
+    s1 = state.load_json(job, "stage1_drawing.json", {})
+    s1["品类"] = 品类
+    state.save_json(job, "stage1_drawing.json", s1)
+    return {"ok": True, "品类": 品类}
 
 
 @app.post("/api/export/{job}/acknowledge")
@@ -400,7 +433,8 @@ async def export_assemble(job: str, request: Request):
         mk = "@@RESULT@@"
         res = json.loads(out[out.rindex(mk) + len(mk):].strip()) if mk in out else {"ok": False, "err": (r.stderr or "")[-200:]}
     if not res.get("ok"):
-        raise HTTPException(500, "装配失败: " + str(res.get("err", "?")))
+        err = str(res.get("err", "?"))
+        raise HTTPException(400 if "品类词" in err else 500, "装配失败: " + err)   # 品类词无来源=软进硬出唯一硬门(400)
     proj = state.load_json(job, "project.json", {"job": job})
     proj.update({"step": 5, "exported": True, "out_path": res.get("out"), "ole": res.get("ole"),
                  "exported_at": datetime.datetime.now().isoformat(timespec="seconds"),

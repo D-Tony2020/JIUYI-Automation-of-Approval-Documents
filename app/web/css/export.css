@@ -23,6 +23,14 @@
 .warn-item .warn-type { font-size: 11px; background: #f59e0b; color: #fff; padding: 1px 7px; border-radius: 9px; }
 .warn-item em { margin-left: auto; font-style: normal; font-size: 11px; color: #6b7280; }
 .all-ok { color: #16a34a; font-size: 13px; padding: 4px; }
+/* 品类词预警: 内联确认(下拉+确认并记住) + 仍可已知悉 */
+.warn-cat { flex-wrap: wrap; cursor: default; }
+.warn-cat .warn-msg { flex: 1 1 auto; }
+.warn-cat .cat-fix { display: flex; align-items: center; gap: 6px; }
+.warn-cat .cat-input { width: 132px; padding: 3px 8px; border: 1px solid #fbbf24; border-radius: 4px; font-size: 13px; }
+.warn-cat .cat-input:focus { outline: none; border-color: #16a34a; }
+.warn-cat .passbtn { padding: 3px 10px; }
+.warn-cat .ack-inline { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #6b7280; cursor: pointer; }
 
 /* 溯源表 */
 .trace-wrap { overflow-x: auto; }
