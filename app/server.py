@@ -419,4 +419,49 @@ async def learn_dict(request: Request):
     return dicts.all_dicts()
 
 
+# ── 材料文件池: 暴露 materials/ 给用户直拖 + 实时跟踪(拖入=UI上传, 同一池) ──────
+@app.post("/api/order/{job}/open-materials")
+def open_materials(job: str):
+    """资源管理器打开本单材料文件池(materials/), 供操作员把散落各处的 MSDS/报告直接拖进来。
+    照 export_assemble 的 os.startfile+try/except 静默范式; Windows 本机桌面有效。"""
+    if not state.assert_job(job):
+        raise HTTPException(400, "非法单号")
+    d = state.materials_dir(job)
+    try:
+        os.startfile(d)                                  # noqa: Windows-only(本产品形态)
+        return {"ok": True, "path": d}
+    except Exception as e:
+        return {"ok": False, "err": str(e), "path": d}
+
+
+@app.get("/api/order/{job}/pool")
+def pool(job: str):
+    """材料文件池跟踪: 列 materials/ 现有文件 + 概括识别类型(UI上传/直拖都进同一池, 实时可见)。"""
+    if not state.assert_job(job):
+        raise HTTPException(400, "非法单号")
+    from hitl.file_router import route
+    from hitl.material_extract import is_msds_name
+    files = []
+    for b in state.materials_list(job):
+        slots = route(b)
+        if "材质表" in slots and is_msds_name(b):
+            t = "MSDS(材质源)"
+        elif "材质表" in slots:
+            t = "材质报告(RoHS/REACH/SVHC)"
+        elif "部件承认" in slots:
+            t = "部件承认书"
+        elif "UL" in slots:
+            t = "UL"
+        elif "信赖性" in slots:
+            t = "信赖性"
+        elif "包装" in slots:
+            t = "包装"
+        elif "出货" in slots:
+            t = "出货"
+        else:
+            t = "未识别"
+        files.append({"文件": b, "类型": t, "已识别": bool(slots) or is_msds_name(b)})
+    return {"files": files, "count": len(files)}
+
+
 app.mount("/", StaticFiles(directory=WEB, html=True), name="web")   # 前端静态, 必须最后挂

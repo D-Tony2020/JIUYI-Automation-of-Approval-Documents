@@ -31,6 +31,22 @@ def materials_dir(job):
     return d
 
 
+def materials_list(job):
+    """材料文件池真值(materials/*.pdf basename 排序)。与抽取读取同口径。"""
+    import glob
+    return sorted(os.path.basename(p) for p in glob.glob(os.path.join(materials_dir(job), "*.pdf"))
+                  if os.path.isfile(p))
+
+
+def assert_job(job):
+    """job 合法性(防路径穿越): 字符白名单 + 拒 .. 与分隔符。失败返 False(端点判400)。"""
+    import re
+    job = str(job or "")
+    if ".." in job or "/" in job or "\\" in job:
+        return False
+    return bool(re.fullmatch(r"[\w-]{1,64}", job))
+
+
 def drawing_pdf(job):
     """本单图纸 PDF 路径(取 drawing/ 下第一份)。无则 None。"""
     import glob

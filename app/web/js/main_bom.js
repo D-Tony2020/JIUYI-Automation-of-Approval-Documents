@@ -14,22 +14,35 @@ let saveTimer = null;
 async function boot() {
   const job = new URLSearchParams(location.search).get("job");
   $("file").addEventListener("change", onUpload);
+  $("openpool").onclick = onOpenPool;                              // 材料文件池: 打开文件夹直拖
+  window.addEventListener("focus", () => { if ($("uploadbar").style.display !== "none" && S.job) renderPool(); });  // 从资源管理器切回→刷新池
   try { S.dicts = await api.getDict(); } catch { /* 用默认空字典 */ }
   if (job) {
     S.job = job;
-    try {
-      const s = await api.getBomState(job); S.materials = s.materials || [];
+    let got = null;
+    try { got = await api.getBomState(job); } catch { /* 未提议(404), 停上传页 */ }
+    S.materials = (got && got.materials) || [];
+    if (S.materials.length) {
       autoResolveAll();
       const exp = new URLSearchParams(location.search).get("exp"); if (exp) S.expanded.add(+exp);
       afterExtract();
-    } catch { /* 未提议, 等上传 */ }
+    } else {
+      renderPool();                                                // 未提议→停上传页+显材料池(已直拖的可见)
+    }
+  }
+}
+
+function ensureJob() {
+  if (!S.job) {
+    S.job = "job_" + Math.random().toString(36).slice(2, 10);
+    const u = new URL(location.href); u.searchParams.set("job", S.job); history.replaceState(null, "", u);  // 写回URL→刷新可续做
   }
 }
 
 async function onUpload(e) {
   const files = [...e.target.files];
   if (!files.length) return;
-  if (!S.job) S.job = "job_" + Math.random().toString(36).slice(2, 10);
+  ensureJob();
   setBusy(`上传 ${files.length} 份材料…`);
   await api.uploadMaterials(S.job, files);
   setBusy(`qwen 读 MSDS 中(每份约 10–20 秒)…`);
@@ -37,6 +50,47 @@ async function onUpload(e) {
   S.materials = r.materials || [];
   autoResolveAll();
   afterExtract();
+}
+
+// 材料文件池: 打开文件夹(创建/沿用本单), 供把散落各处的 MSDS/报告直接拖进来
+function onOpenPool() {
+  ensureJob();
+  api.openMaterials(S.job).then((r) => {
+    toast(r.ok ? "已打开材料文件池，把散落的 MSDS/报告拖进 materials\\ 后回来点「读取并抽取」" : "打开失败：" + (r.err || ""), r.ok ? "ok" : "err");
+    renderPool();
+  });
+}
+
+// 读取材料池并抽取(拖入=上传; 文件已在 materials/, 直接 bomExtract)
+async function onReadPool() {
+  if (!S.job) { toast("先点「打开材料文件池」放入文件", "err"); return; }
+  setBusy("qwen 读材料文件池 MSDS（每份约 10–20 秒）…");
+  let r; try { r = await api.bomExtract(S.job); } catch (e) { setBusy(""); toast("抽取失败：" + e.message, "err"); return; }
+  S.materials = r.materials || [];
+  if (!S.materials.length) {
+    setBusy("");
+    toast("文件池里没读到可用的 MSDS。注意：RoHS/REACH 等是报告不算材质源；若某 PDF 读不出文字也会漏(见下方类型标注)。", "err");
+    renderPool(); return;
+  }
+  autoResolveAll(); afterExtract();
+}
+
+async function renderPool() {                                      // 材料文件池实时跟踪(UI上传/直拖都进同一池)
+  const el = $("pooltracker"); if (!el) return;
+  if (!S.job) { el.innerHTML = ""; return; }
+  let r; try { r = await api.pool(S.job); } catch { return; }
+  if (!r.count) {
+    el.innerHTML = `<div class="pool-head">📥 材料文件池（materials\\）：空 <button class="pool-refresh" id="poolrefresh">刷新</button></div>`
+      + `<div class="pool-tip">点上面「📂打开材料文件池」，把散落各处的 MSDS/报告拖进去（拖入=上传）</div>`;
+  } else {
+    const rows = r.files.map((f) =>
+      `<div class="pool-row ${f.已识别 ? "" : "unk"}"><span class="pool-f">${esc(f.文件)}</span><span class="pool-t">${esc(f.类型)}</span></div>`).join("");
+    el.innerHTML = `<div class="pool-head">📥 材料文件池（materials\\）· ${r.count} 个文件 `
+      + `<button class="pool-refresh" id="poolrefresh">刷新</button>`
+      + `<button class="readpool-btn" id="readpool">🔄 读取并抽取材质</button></div>${rows}`;
+  }
+  const pr = $("poolrefresh"); if (pr) pr.onclick = renderPool;
+  const rp = $("readpool"); if (rp) rp.onclick = onReadPool;
 }
 
 // 材质为锚: 用 材质原文 反查字典, 自动填 标准名/类别/零件(仅在操作员未填时, 不覆盖)

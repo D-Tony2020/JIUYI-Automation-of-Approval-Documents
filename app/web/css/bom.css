@@ -8,6 +8,24 @@
 .prep-grid span small { color: var(--c-mut); font-size: 11px; white-space: nowrap; }
 .prep-grid .prep-now { background: var(--c-brand); color: #fff; font-weight: bold; }
 .prep-grid .prep-now small { color: #dbeafe; }
+/* 材料文件池: 两方式并行 + 实时跟踪 */
+.upload-row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+.upload-row .or { color: var(--c-mut); font-size: var(--fs-sm); }
+.uploadbtn.alt { background: #fff; color: var(--c-brand); border: 1px solid var(--c-brand); }
+.uploadbtn.alt:hover { background: #eff6ff; }
+.uploadbtn code { background: rgba(255,255,255,.2); padding: 0 3px; border-radius: 3px; }
+.pool-tracker { max-width: 640px; margin: 14px auto 0; border: 1px solid var(--c-line); border-radius: var(--r-md); background: #fff; overflow: hidden; text-align: left; }
+.pool-tracker:empty { display: none; }
+.pool-head { font-size: var(--fs-sm); font-weight: bold; color: var(--c-ink); background: var(--c-bg); padding: 7px 12px; display: flex; align-items: center; gap: 8px; }
+.pool-refresh { font-size: var(--fs-cap); padding: 2px 10px; border-radius: var(--r-sm); border: 1px solid var(--c-line-d); background: #fff; color: var(--c-mut); cursor: pointer; }
+.pool-refresh:hover { color: var(--c-brand); border-color: var(--c-brand); }
+.readpool-btn { margin-left: auto; font-size: var(--fs-cap); font-weight: bold; padding: 3px 12px; border-radius: var(--r-sm); border: 1px solid var(--c-brand); background: var(--c-brand); color: #fff; cursor: pointer; }
+.readpool-btn:hover { background: #1d4ed8; }
+.pool-tip { font-size: var(--fs-cap); color: var(--c-mut); padding: 8px 12px; }
+.pool-row { display: flex; align-items: center; gap: 10px; padding: 4px 12px; border-top: 1px solid var(--c-line); font-size: var(--fs-cap); }
+.pool-f { flex: 1; color: var(--c-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pool-t { color: #065f46; background: var(--c-ok-bg); border-radius: 8px; padding: 1px 8px; white-space: nowrap; }
+.pool-row.unk .pool-t { color: var(--c-warn-t); background: var(--c-warn-bg); }
 .step.done { background: #d1fae5; color: #065f46; }
 
 /* 工具行(sticky) */

@@ -67,6 +67,15 @@ export async function bomConfirm(job, payload) {
   });
 }
 
+// 材料文件池: 打开文件夹直拖 + 实时跟踪
+export async function openMaterials(job) {
+  return _json(`/api/order/${job}/open-materials`, { method: "POST" });
+}
+
+export async function pool(job) {
+  return _json(`/api/order/${job}/pool`);
+}
+
 // ── M2.4 确认环② 文件树 ────────────────────────────────────
 export async function filetreeState(job) {
   return _json(`/api/filetree/${job}/state`);

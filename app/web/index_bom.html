@@ -18,10 +18,15 @@
   <div class="busy" id="busy" style="display:none"></div>
 
   <div class="uploadbar" id="uploadbar">
-    <label class="uploadbtn">① 先传核心料 MSDS（决定 BOM，可多选）
-      <input type="file" id="file" accept="application/pdf" multiple hidden>
-    </label>
-    <p class="tip">这步<b>只需各材料的 MSDS</b>——qwen 读后自动提出材质清单。其余报告<b>下一步「④挂文件」按槽补</b>，不必现在全找齐。</p>
+    <p class="tip">这步<b>只需各材料的 MSDS</b>——qwen 读后自动提出材质清单。两种方式任选或混用，<b>都进同一个材料文件池</b>（<code>materials\</code>）：在软件里选，或直接把散落各处的文件拖进文件夹。</p>
+    <div class="upload-row">
+      <label class="uploadbtn">＋ 在软件里选 MSDS（可多选）
+        <input type="file" id="file" accept="application/pdf" multiple hidden>
+      </label>
+      <span class="or">或</span>
+      <button id="openpool" class="uploadbtn alt">📂 打开材料文件池，把文件拖进去</button>
+    </div>
+    <div class="pool-tracker" id="pooltracker"></div>
     <div class="prep-list">
       <div class="prep-head">📋 整套承认书最终需要的文件（心里有数即可，逐步补）</div>
       <div class="prep-grid">
