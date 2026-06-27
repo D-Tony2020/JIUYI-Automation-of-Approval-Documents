@@ -189,12 +189,14 @@ function renderToolbar() {
   $("toolbar").innerHTML = `
     <span class="tb-grp"><b class="tb-lbl">增/批量</b>
       <button id="addmanual">+ 手动补材质</button>
-      <select id="batchpart"><option value="">批量设零件▾</option>${parts().map((p) => `<option>${esc(p)}</option>`).join("")}<option value="__new__">➕新建…</option></select></span>
+      <select id="batchpart"><option value="">批量设零件▾</option>${parts().map((p) => `<option>${esc(p)}</option>`).join("")}<option value="__new__">➕新建…</option></select>
+      <button id="passallbom" class="passall-btn">✓ 一键核对所有</button></span>
     <span class="tb-grp"><b class="tb-lbl">视图</b>
       <label><input type="checkbox" id="grouptoggle" ${S.view.group ? "checked" : ""}> 按零件分组</label>
       <span class="seg">${seg("", "全部")}${seg("todo", "待补")}${seg("warn", "标黄")}</span></span>
     <input id="search" placeholder="搜索 材质/原文/源文件" value="${esc(S.view.q)}">`;
   $("addmanual").onclick = addManual;
+  $("passallbom").onclick = () => { S.materials.forEach((m) => { if (!m.豁免) m.已核对 = true; }); save(); render(); };  // 一键核对所有(非豁免)
   $("batchpart").onchange = (e) => batchAssign(e.target.value);
   $("grouptoggle").onchange = (e) => { S.view.group = e.target.checked; render(); };
   document.querySelectorAll("[data-filter]").forEach((el) => el.onclick = () => { S.view.filter = el.dataset.filter || null; render(); });

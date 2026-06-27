@@ -31,9 +31,10 @@
       <div class="viewer" id="viewer"></div>
     </section>
     <section class="right">
-      <h3>三要素 <small>(对照图纸核对, 改错, 勾"已核对")</small></h3>
+      <div class="right-actions"><button id="passall" class="passall-btn">✓ 一键核对所有</button></div>
+      <h3>三要素 <span id="tri-prog" class="sec-prog"></span> <small>(对照图纸核对, 改错, 标记通过)</small></h3>
       <div id="identity"></div>
-      <h3>FAI 受检尺寸 <small>(改中心/公差→实时重算上下限)</small></h3>
+      <h3>FAI 受检尺寸 <span id="fai-prog" class="sec-prog"></span> <small>(改中心/公差→实时重算上下限)</small></h3>
       <div id="dims"></div>
     </section>
   </main>

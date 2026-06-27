@@ -97,3 +97,16 @@ a.step.done { cursor: pointer; } a.step:hover { filter: brightness(.96); text-de
 .dlg-toast.err { background: var(--c-err); }
 .dlg-toast.ok { background: var(--c-ok); }
 .saved-tick { position: fixed; bottom: 16px; right: 16px; background: var(--c-ok-bg); color: #065f46; padding: 4px 12px; border-radius: var(--r-md); font-size: var(--fs-cap); opacity: 0; transition: opacity .3s; z-index: 90; pointer-events: none; }
+/* 核对状态徽章+独立[标记通过](①③统一; ①不载bom.css故放共享) */
+.mbadge { font-size: var(--fs-cap); padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.mbadge.todo { background: var(--c-bg); color: var(--c-mut); }
+.mbadge.pass { background: var(--c-ok-bg); color: #065f46; font-weight: bold; }
+.mbadge.ex { background: #f1f5f9; color: #94a3b8; text-decoration: line-through; }
+.passbtn { font-size: var(--fs-cap); font-weight: 600; padding: 3px 12px; border-radius: var(--r-sm); cursor: pointer; border: 1px solid var(--c-ok); background: var(--c-ok); color: #fff; }
+.passbtn:hover { background: #15803d; }
+.passbtn.on { background: #fff; color: #065f46; }
+.card-foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: 6px; }
+.right-actions { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.passall-btn { font-size: var(--fs-base); font-weight: bold; padding: 5px 14px; border-radius: var(--r-md); border: 1px solid var(--c-ok); background: var(--c-ok); color: #fff; cursor: pointer; }
+.passall-btn:hover { background: #15803d; }
+.sec-prog { font-size: var(--fs-sm); color: var(--c-warn-t); background: var(--c-warn-bg); border-radius: 8px; padding: 0 7px; }

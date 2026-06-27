@@ -55,6 +55,11 @@ function renderRight() {
   refresh();
 }
 
+function passUI(key, passed) {                // 与③统一: 状态徽章 + 独立[标记通过/取消通过]
+  return `<span class="mbadge ${passed ? "pass" : "todo"}">${passed ? "✓ 已通过" : "待核对"}</span>`
+    + `<button class="passbtn ${passed ? "on" : ""}" data-pass-key="${key}">${passed ? "取消通过" : "标记通过"}</button>`;
+}
+
 function idCard(i, [label, val, , hint]) {
   const key = "id" + i;
   return `<div class="card" data-key="${key}">
@@ -64,7 +69,7 @@ function idCard(i, [label, val, , hint]) {
       <span class="rule" id="rule-${key}"></span>
       <span class="hint">${hint}</span>
     </div>
-    <label class="chk"><input type="checkbox" data-check="${key}" ${S.data.checked[key] ? "checked" : ""}> 已核对图纸</label>
+    <div class="card-foot">${passUI(key, !!S.data.checked[key])}</div>
   </div>`;
 }
 
@@ -79,9 +84,9 @@ function dimCard(i, dim) {
       <span class="rule" id="rule-${key}"></span>
     </div>
     <div class="derived" id="derived-${key}"></div>
-    <div class="card-row">
-      <label class="chk"><input type="checkbox" data-check="${key}" ${S.data.checked[key] ? "checked" : ""} ${exempt ? "disabled" : ""}> 已核对图纸</label>
-      <button class="exbtn" data-exempt="${i}">${exempt ? "取消豁免" : "豁免"}</button>
+    <div class="card-foot">
+      ${exempt ? `<span class="mbadge ex">豁免</span> <button class="exbtn" data-exempt="${i}">取消豁免</button>`
+      : `${passUI(key, !!S.data.checked[key])} <button class="exbtn" data-exempt="${i}">豁免</button>`}
     </div>
   </div>`;
 }
@@ -89,10 +94,16 @@ function dimCard(i, dim) {
 function bindEvents() {
   document.querySelectorAll(".inp").forEach((el) =>
     el.addEventListener("input", () => { writeBack(el); refresh(); }));
-  document.querySelectorAll("[data-check]").forEach((el) =>
-    el.addEventListener("change", () => { S.data.checked[el.dataset.check] = el.checked; refresh(); }));
+  document.querySelectorAll("[data-pass-key]").forEach((el) =>
+    el.addEventListener("click", () => { const k = el.dataset.passKey; S.data.checked[k] = !S.data.checked[k]; renderRight(); }));
   document.querySelectorAll("[data-exempt]").forEach((el) =>
     el.addEventListener("click", () => toggleExempt(+el.dataset.exempt)));
+  const pa = document.getElementById("passall");
+  if (pa) pa.onclick = () => {                       // 一键核对所有(非豁免项)
+    [0, 1, 2].forEach((i) => (S.data.checked["id" + i] = true));
+    (S.data.dimensions || []).forEach((_, i) => { if (!(S.data.exemptions || []).some((e) => e.序号 === i)) S.data.checked["dim" + i] = true; });
+    renderRight();
+  };
   $("gatebtn").addEventListener("click", onConfirm);
 }
 
@@ -140,6 +151,10 @@ function refresh() {
     if (!d.checked[key]) missing.push(`尺寸${i + 1}未勾核`);
     markCard(key, rok ? (d.checked[key] ? "ok" : "todo") : "warn");
   });
+  // 分区进度
+  const tp = document.getElementById("tri-prog"), fp = document.getElementById("fai-prog");
+  if (tp) tp.textContent = `${[0, 1, 2].filter((i) => d.checked["id" + i]).length}/3`;
+  if (fp) { const tot = (d.dimensions || []).length; const dn = (d.dimensions || []).filter((_, i) => d.checked["dim" + i] || (d.exemptions || []).some((e) => e.序号 === i)).length; fp.textContent = `${dn}/${tot}`; }
   // 放行门(软导航式) + 待办chips
   const exN = (d.exemptions || []).length;
   S.missing = missing;
