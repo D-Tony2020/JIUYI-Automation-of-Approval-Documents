@@ -25,7 +25,7 @@ export function renderSteps(containerId, cur) {
   if (!el) return;
   const job = _job();
   const brand = `<span class="brand-logo" title="久益 · 材料承认书自动生成(给生久供货)">久益 AI</span>`;
-  const home = `<a class="home-link" href="index_home.html" title="返回本单列表">← 本单</a>`;
+  const home = `<a class="home-link" href="index_home.html" title="返回历史记录">← 本单</a>`;
   el.innerHTML = brand + home + STEPS.map((s) => {
     const cls = s.n === cur ? "cur" : (s.n < cur ? "done" : "");
     const click = s.n !== cur && job;                 // 非当前步可点跳(回看/续做)
