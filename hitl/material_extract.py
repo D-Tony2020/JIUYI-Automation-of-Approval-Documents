@@ -72,6 +72,19 @@ def _safe(fn, timeout=45):
     return res[0]
 
 
+def _fitz_text(pdf):
+    """fitz(PyMuPDF) 取全文。pdfplumber/pdftotext 本机偶发失灵返空时的兜底(fitz 更稳)。"""
+    try:
+        import fitz
+        d = fitz.open(pdf)
+        try:
+            return "\n".join((p.get_text("text") or "") for p in d)
+        finally:
+            d.close()
+    except Exception:
+        return ""
+
+
 def pdf_text_for_llm(pdf):
     """喂 LLM 的文本 = pdfplumber表格 + 全文(表在前, 封顶14000)。磁盘缓存(只存成功的)。返回 (txt, full)。"""
     import hashlib
@@ -80,8 +93,11 @@ def pdf_text_for_llm(pdf):
     cf = os.path.join(_CACHE, "text", key + ".json")
     if os.path.exists(cf):
         d = json.load(open(cf, encoding="utf-8"))
-        return d["txt"], d["full"]
+        if (d.get("full") or "").strip():        # 旧缓存 full 空(pdfplumber失灵时存的, is_msds判不出)→ 跳过重读走fitz
+            return d["txt"], d["full"]
     full = _safe(lambda: pdf_to_text(pdf)) or ""
+    if not full.strip():                         # pdfplumber/pdftotext 读空(本机偶发) → fitz 兜底, 救回有文字层的MSDS
+        full = _safe(lambda: _fitz_text(pdf)) or ""
     tbl = _safe(lambda: pdf_to_table_markdown(pdf) or "") or ""
     txt = ((tbl + "\n\n=== 全文 ===\n" + full) if tbl else full)[:14000]
     if full or tbl:                              # 只缓存成功的(挂起的空结果不固化, 下次重试)

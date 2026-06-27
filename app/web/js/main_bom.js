@@ -48,6 +48,11 @@ async function onUpload(e) {
   setBusy(`qwen 读 MSDS 中(每份约 10–20 秒)…`);
   const r = await api.bomExtract(S.job);
   S.materials = r.materials || [];
+  if (!S.materials.length) {                                      // 0材质别跳空工作区, 停上传页+解释(同 onReadPool)
+    setBusy("");
+    toast("没读到可用的 MSDS 材质。注意：RoHS/REACH 等是报告不算材质源；若某 PDF 读不出文字也会漏(见下方文件池类型标注)。", "err");
+    renderPool(); return;
+  }
   autoResolveAll();
   afterExtract();
 }
