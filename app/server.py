@@ -206,6 +206,33 @@ def filetree_state(job: str):
     return s
 
 
+@app.get("/api/orders")
+def list_orders():
+    """最近本单列表(断点续做首页): 各单品号/名称 + 各步进度 + 续做步。按更新时间倒序。"""
+    import glob
+    out = []
+    for d in sorted(glob.glob(os.path.join(state.WORK, "*"))):
+        if not os.path.isdir(d):
+            continue
+        job = os.path.basename(d)
+        if job.startswith(("_", "demo_", "_wf")):           # 跳过临时/测试单
+            continue
+        s1 = state.load_json(job, "stage1_drawing.json") or {}
+        proj = state.load_json(job, "project.json") or {}
+        ov = overview(job)
+        resume = 4
+        for n in ("1", "2", "3", "4"):                       # 续做步=第一个未完成步
+            o = ov.get(n)
+            if not o or o.get("缺", 0) > 0:
+                resume = int(n)
+                break
+        out.append({"job": job, "品号": s1.get("品号", ""), "名称": s1.get("名称", ""),
+                    "overview": ov, "resume": resume, "exported": bool(proj.get("exported")),
+                    "updated": os.path.getmtime(d)})
+    out.sort(key=lambda x: -x["updated"])
+    return out
+
+
 @app.get("/api/overview/{job}")
 def overview(job: str):
     """全流程总进度(供步条缺N徽标+断点续做首页): 各步缺项数+是否完成。各步状态文件不存在则该步缺=null。"""

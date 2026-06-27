@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import uvicorn
 
 HOST, PORT = "127.0.0.1", 8731
-URL = f"http://{HOST}:{PORT}/"
+URL = f"http://{HOST}:{PORT}/index_home.html"      # 落地=断点续做首页(本单列表+新建)
 
 
 def _serve():
