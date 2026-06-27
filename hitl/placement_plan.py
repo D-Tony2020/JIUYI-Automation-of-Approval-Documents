@@ -315,12 +315,22 @@ def pile_specs(materials_dir, sheet_names, drawing_pdf=None, materials=None, par
         for sp in by_short[short]:
             sp.update(L=L, T=T, W=W, H=H)
             specs.append(sp)
+    draw_pdfs = []                                   # 图纸: stage1 drawing_pdf + 操作员拖进图纸页槽的(部件归属 槽=图纸), 防覆盖红线: 拖了必嵌
     if drawing_pdf:
+        draw_pdfs.append(drawing_pdf)
+    for f in sorted(glob.glob(os.path.join(materials_dir, "*.pdf"))):
+        b = os.path.basename(f)
+        if _norm(b) in excluded:
+            continue
+        if _pa_slot(part_assign.get(b)) == "图纸" and f not in draw_pdfs:
+            draw_pdfs.append(f)
+    if draw_pdfs:
         fs = _find_sheet(sheet_names, "图纸")
-        L, T, W, H = DEFAULT_ANCHOR["图纸"]
+        L, T, _W, _H = DEFAULT_ANCHOR["图纸"]
         if fs:
-            specs.append({"sheet": fs, "pdf": drawing_pdf, "short": "图纸",
-                          "L": L, "T": T, "W": DRAWING_W, "H": DRAWING_H, "label": "图纸"})
+            for k, dp in enumerate(draw_pdfs):       # 多张图纸横向错开, 不重叠
+                specs.append({"sheet": fs, "pdf": dp, "short": "图纸",
+                              "L": L + k * (DRAWING_W + 6), "T": T, "W": DRAWING_W, "H": DRAWING_H, "label": "图纸"})
     return specs
 
 
