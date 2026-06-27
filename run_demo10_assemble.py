@@ -57,6 +57,16 @@ def worker(code):
     outdir = os.path.join(OUTDIR, "_tmp", code)
     os.makedirs(outdir, exist_ok=True)
     out = os.path.join(OUTDIR, f"{code}_承认书.xlsx")
+    if os.path.exists(out):                              # 旧产出被占用(Explorer预览/僵尸进程)→换名, 不让锁挡住装配
+        try:
+            os.remove(out)
+        except OSError:
+            out = os.path.join(OUTDIR, f"{code}_承认书_新.xlsx")
+            try:
+                if os.path.exists(out):
+                    os.remove(out)
+            except OSError:
+                pass
     r = assemble(stage2, meta, dims, md, drawing_pdf, out, outdir)
     fai_n = -1                                          # 自测: 读回 FAI 实填项数(中心列非空)
     try:
