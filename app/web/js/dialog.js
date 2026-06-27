@@ -39,6 +39,17 @@ export function dlgPrompt({ title, placeholder = "", value = "", presets = null,
   });
 }
 
+export function dlgInfo(title, bodyHtml) {
+  // 只读展示弹窗(如人工修改记录)。bodyHtml 由调用方自行转义。
+  const o = _overlay();
+  o.innerHTML = `<div class="dlg dlg-wide"><div class="dlg-title">${esc(title)}</div>`
+    + `<div class="dlg-body">${bodyHtml}</div>`
+    + `<div class="dlg-btns"><button class="dlg-ok">关闭</button></div></div>`;
+  o.style.display = "flex";
+  const close = () => { o.style.display = "none"; o.innerHTML = ""; };
+  o.querySelector(".dlg-ok").onclick = close;
+}
+
 export function dlgConfirm(msg) {
   return new Promise((resolve) => {
     const o = _overlay();

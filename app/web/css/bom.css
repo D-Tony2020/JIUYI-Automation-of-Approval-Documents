@@ -26,6 +26,14 @@
 .pool-f { flex: 1; color: var(--c-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pool-t { color: #065f46; background: var(--c-ok-bg); border-radius: 8px; padding: 1px 8px; white-space: nowrap; }
 .pool-row.unk .pool-t { color: var(--c-warn-t); background: var(--c-warn-bg); }
+/* 人工修改记录(审计) */
+.log-tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-cap); }
+.log-tbl th { text-align: left; color: var(--c-mut); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--c-line-d); position: sticky; top: 0; background: #fff; }
+.log-tbl td { padding: 4px 8px; border-bottom: 1px solid var(--c-line); vertical-align: top; }
+.log-tbl .log-t { color: var(--c-mut); white-space: nowrap; }
+.log-tbl .log-op { color: var(--c-brand); font-weight: 600; white-space: nowrap; }
+.folder-btn { font-size: var(--fs-cap); font-weight: 600; padding: 4px 10px; border-radius: var(--r-sm); border: 1px solid var(--c-line-d); background: #fff; color: var(--c-mut); cursor: pointer; white-space: nowrap; }
+.folder-btn:hover { color: var(--c-brand); border-color: var(--c-brand); }
 .step.done { background: #d1fae5; color: #065f46; }
 
 /* 工具行(sticky) */

@@ -67,6 +67,17 @@ export async function bomConfirm(job, payload) {
   });
 }
 
+// 人工修改审计留痕
+export async function bomLog(job, entry) {
+  return _json(`/api/bom/${job}/log`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(entry),
+  });
+}
+
+export async function getBomLog(job) {
+  return _json(`/api/bom/${job}/log`);
+}
+
 // 材料文件池: 打开文件夹直拖 + 实时跟踪
 export async function openMaterials(job) {
   return _json(`/api/order/${job}/open-materials`, { method: "POST" });

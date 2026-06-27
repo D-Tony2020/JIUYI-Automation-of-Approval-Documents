@@ -185,6 +185,27 @@ async def bom_save(job: str, request: Request):
     return {"ok": True}
 
 
+@app.post("/api/bom/{job}/log")
+async def bom_log(job: str, request: Request):
+    """人工修改审计留痕(append-only, 后端盖时戳): 存 修改记录.json。准入追责可溯。"""
+    if not state.assert_job(job):
+        raise HTTPException(400, "非法单号")
+    body = await request.json()
+    log = state.load_json(job, "修改记录.json", []) or []
+    log.append({"t": datetime.datetime.now().isoformat(timespec="seconds"),
+                "操作": str(body.get("操作", ""))[:40], "详情": str(body.get("详情", ""))[:300]})
+    state.save_json(job, "修改记录.json", log)
+    return {"ok": True, "n": len(log)}
+
+
+@app.get("/api/bom/{job}/log")
+def bom_log_get(job: str):
+    """读本单人工修改记录(审计)。"""
+    if not state.assert_job(job):
+        raise HTTPException(400, "非法单号")
+    return {"log": state.load_json(job, "修改记录.json", []) or []}
+
+
 # ── M2.4 确认环② 文件树 ────────────────────────────────────
 @app.get("/api/filetree/{job}/state")
 def filetree_state(job: str):

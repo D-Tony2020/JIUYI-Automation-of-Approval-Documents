@@ -15,6 +15,24 @@ def test_assert_job():
         assert not state.assert_job(bad), bad
 
 
+def test_bom_log_append():
+    from fastapi.testclient import TestClient
+    from app import state, server
+    import shutil
+    c = TestClient(server.app)
+    job = "demo_logtest2"
+    try:
+        c.post(f"/api/bom/{job}/log", json={"操作": "新增零件", "详情": "「导线」"})
+        c.post(f"/api/bom/{job}/log", json={"操作": "改零件", "详情": "PVC: → 导线"})
+        log = c.get(f"/api/bom/{job}/log").json()["log"]
+        assert len(log) == 2
+        assert log[0]["操作"] == "新增零件" and "t" in log[0]      # append-only + 后端盖时戳
+        assert log[1]["详情"] == "PVC: → 导线"
+        assert c.get("/api/bom/a..b/log").status_code == 400        # 防穿越
+    finally:
+        shutil.rmtree(state.order_dir(job), ignore_errors=True)
+
+
 def test_pool_classify(tmp_path, monkeypatch):
     from app import state, server
     job = "demo_pooltest"

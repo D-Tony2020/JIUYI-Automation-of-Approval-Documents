@@ -86,6 +86,8 @@ a.step.done { cursor: pointer; } a.step:hover { filter: brightness(.96); text-de
 /* 页内小面板(替换原生prompt/alert/confirm) */
 .dlg-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 100; align-items: center; justify-content: center; }
 .dlg { background: #fff; border-radius: var(--r-lg); padding: 18px 20px; min-width: 320px; max-width: 460px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+.dlg.dlg-wide { max-width: 680px; width: 680px; }
+.dlg-body { max-height: 55vh; overflow-y: auto; margin-bottom: 10px; }
 .dlg-title { font-size: var(--fs-md); font-weight: bold; color: var(--c-ink); margin-bottom: 10px; }
 .dlg-presets { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; font-size: var(--fs-base); }
 .dlg-presets label { display: flex; align-items: center; gap: 6px; cursor: pointer; }

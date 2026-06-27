@@ -8,6 +8,15 @@ sys.path.insert(0, ROOT)
 
 from hitl.file_link import _ident, _match_report, report_type, suggest_for
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolate_learning(monkeypatch):
+    # 规则层单测隔离全局成长型 归属学习.json(其随生产使用累积数据会让 suggest_for 走"学"路径, 误破规则断言)。
+    from hitl import dicts
+    monkeypatch.setattr(dicts, "lookup_assign", lambda *a, **k: {})
+
 
 def test_report_type():
     assert report_type("镀锡ROHS英文 CANEC26012090003 20260519.pdf") == "RoHS"
