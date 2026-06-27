@@ -18,13 +18,16 @@
 .mat-card .matname { font-weight: 600; font-size: 13px; min-width: 120px; }
 .mat-card.exempt .matname { text-decoration: line-through; color: #9ca3af; }
 .slot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.slot { border: 1px solid #e5e7eb; border-radius: 5px; padding: 4px 6px; min-height: 48px; background: #fff; }
-.slot[data-st=ok] { border-color: #16a34a; background: #f0fdf4; }
-.slot[data-st=todo] { border: 1px dashed #cbd5e1; background: #f9fafb; }
+.slot { border: 1px solid var(--c-line); border-radius: 5px; padding: 4px 6px; min-height: 48px; background: #fff; }
+.slot[data-st=ok] { border-color: var(--c-ok); background: #f0fdf4; }
+.slot[data-st=todo] { border: 1px dashed var(--c-warn); background: var(--c-warn-bg); }  /* MSDS空=硬门必补→橙 */
+.slot[data-st=opt] { border: 1px dashed var(--c-line-d); background: #fafafa; }            /* 第三方空=可空→灰 */
 .slot[data-st=exempt] { opacity: .55; }
-.slot.drag-over { border: 2px solid #0284c7 !important; background: #dbeafe; }
-.col-label { font-size: 10px; color: #9ca3af; margin-bottom: 3px; }
-.emptyslot { font-size: 11px; color: #cbd5e1; }
+.slot.drag-over { border: 2px solid var(--c-drop) !important; background: var(--c-drop-bg); }
+.col-label { font-size: var(--fs-sm); color: var(--c-mut); margin-bottom: 3px; font-weight: 600; }
+.emptyslot { font-size: var(--fs-cap); }
+.emptyslot.must { color: var(--c-warn-t); font-weight: 600; }                              /* 缺·必补 */
+.emptyslot.opt { color: var(--c-todo); }                                                   /* 可空 */
 
 /* 文件 chip(可拖) */
 .filechip { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; background: #eef2ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; margin: 2px 0; cursor: grab; max-width: 100%; }

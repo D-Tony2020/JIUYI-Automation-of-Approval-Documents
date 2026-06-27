@@ -48,8 +48,12 @@ function matRow(m) {
     const st = slotState(real, col);
     const chips = m.slots[col.key].map((f) =>
       `<span class="filechip" draggable="true" data-from="${m.idx}" data-type="${esc(f.类型)}" data-file="${esc(f.文件)}" title="${esc(f.文件)}">${esc(shortName(f.文件))}<button class="x" data-unlink="${m.idx}|${esc(f.类型)}|${esc(f.文件)}">×</button></span>`).join("");
-    const empty = m.slots[col.key].length ? "" : `<span class="emptyslot">空槽</span>`;
-    return `<div class="slot" data-drop="${m.idx}|${col.key}" data-st="${st}"><div class="col-label">${col.key} ${col.label}</div>${chips}${empty}</div>`;
+    const must = col.key === "K";                          // MSDS=唯一硬门必补; L/Y第三方可空
+    const empty = m.slots[col.key].length ? ""
+      : (real.豁免 ? `<span class="emptyslot opt">—</span>`
+        : `<span class="emptyslot ${must ? "must" : "opt"}">${must ? "缺 · 必补" : "可空"}</span>`);
+    const sst = (st === "todo" && !must && !real.豁免) ? "opt" : st;   // 第三方空=opt(不算缺)
+    return `<div class="slot" data-drop="${m.idx}|${col.key}" data-st="${sst}"><div class="col-label">${col.key} ${col.label}</div>${chips}${empty}</div>`;
   }).join("");
   return `<div class="card mat-card ${m.豁免 ? "exempt" : ""}" data-st="${m.豁免 ? "exempt" : "ok"}" data-i="${m.idx}">
     <div class="mat-row"><span class="matname">${esc(m.材质)}</span>
