@@ -11,6 +11,8 @@
 /* 材料文件池: 两方式并行 + 实时跟踪 */
 .upload-row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
 .upload-row .or { color: var(--c-mut); font-size: var(--fs-sm); }
+.backtobom-top { align-self: flex-start; margin: 10px 0 0 14px; padding: 7px 15px; font-size: 14px; background: #fff; color: var(--c-brand); border: 1px solid var(--c-brand); border-radius: 8px; cursor: pointer; }  /* 继续上传页·左上角返回(flex列子项, 不拉伸) */
+.backtobom-top:hover { background: #eff6ff; }
 .uploadbtn.alt { background: #fff; color: var(--c-brand); border: 1px solid var(--c-brand); }
 .uploadbtn.alt:hover { background: #eff6ff; }
 .uploadbtn code { background: rgba(255,255,255,.2); padding: 0 3px; border-radius: 3px; }

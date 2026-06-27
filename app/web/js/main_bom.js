@@ -137,6 +137,7 @@ function autoResolveAll() {
 function afterExtract() {
   setBusy("");
   $("uploadbar").style.display = "none";
+  { const b = $("backtobom"); if (b) b.style.display = "none"; }   // 返回材质表→收起左上角返回钮
   $("workspace").style.display = "block";
   render();
 }
