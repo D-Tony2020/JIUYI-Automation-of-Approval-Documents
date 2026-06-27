@@ -46,5 +46,15 @@ USER_DATA_DIR = user_data_dir()
 
 
 def work_base():
-    """运行时工作态根(.work/产出留档)。冻结→%APPDATA%(安装目录常只读); dev→项目根(原位, 行为不变)。"""
-    return USER_DATA_DIR if _FROZEN else resource_base()
+    """运行时工作态根(.work 含材料PDF + 产出留档)。WPS COM 要嵌材料PDF、开cell——
+    实测 COM 打不开 %APPDATA%(Roaming/Local 都被WPS挡), 能开 Documents/TEMP →
+    冻结落「我的文档\\久益承认书自动化」(COM可读 + 用户可见产出); dev→项目根(原位不变)。"""
+    if not _FROZEN:
+        return resource_base()
+    docs = os.path.join(os.path.expanduser("~"), "Documents")
+    base = os.path.join(docs if os.path.isdir(docs) else _install_dir(), "久益承认书自动化")
+    try:
+        os.makedirs(base, exist_ok=True)
+    except OSError:
+        base = _install_dir()
+    return base
