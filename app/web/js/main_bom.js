@@ -10,11 +10,13 @@ const S = { job: null, materials: [], dicts: { alias: {}, catpart: {}, suppliers
             view: { group: true, filter: null, q: "" }, expanded: new Set() };
 const $ = (id) => document.getElementById(id);
 let saveTimer = null;
+let continueMode = false;          // 继续上传材料模式: 再抽走合并端点(保留已编辑材质), 而非缓存/覆盖
 
 async function boot() {
   const job = new URLSearchParams(location.search).get("job");
   $("file").addEventListener("change", onUpload);
   $("openpool").onclick = onOpenPool;                              // 材料文件池: 打开文件夹直拖
+  { const b = $("backtobom"); if (b) b.onclick = backToBom; }      // 继续上传页 → 返回材质表(不新增)
   window.addEventListener("focus", () => { if ($("uploadbar").style.display !== "none" && S.job) renderPool(); });  // 从资源管理器切回→刷新池
   try { S.dicts = await api.getDict(); } catch { /* 用默认空字典 */ }
   if (job) {
@@ -45,8 +47,8 @@ async function onUpload(e) {
   ensureJob();
   setBusy(`上传 ${files.length} 份材料…`);
   await api.uploadMaterials(S.job, files);
-  setBusy(`qwen 读 MSDS 中(每份约 10–20 秒)…`);
-  const r = await api.bomExtract(S.job);
+  setBusy(`阿里千问（Qwen3.7-Plus）大语言模型 读 MSDS 中(每份约 10–20 秒)…`);
+  const r = continueMode ? await api.bomExtractMore(S.job) : await api.bomExtract(S.job);
   S.materials = r.materials || [];
   if (!S.materials.length) {                                      // 0材质别跳空工作区, 停上传页+解释(同 onReadPool)
     setBusy("");
@@ -54,7 +56,10 @@ async function onUpload(e) {
     renderPool(); return;
   }
   autoResolveAll();
+  const added = r._added;
+  continueMode = false;
   afterExtract();
+  if (added != null) toast(added ? `已合并：新增 ${added} 个材质（原有材质与修改保留）` : "无新材质（文件可能已在或非 MSDS）", added ? "ok" : "info");
 }
 
 // 材料文件池: 打开文件夹(创建/沿用本单), 供把散落各处的 MSDS/报告直接拖进来
@@ -69,15 +74,34 @@ function onOpenPool() {
 // 读取材料池并抽取(拖入=上传; 文件已在 materials/, 直接 bomExtract)
 async function onReadPool() {
   if (!S.job) { toast("先点「打开材料文件池」放入文件", "err"); return; }
-  setBusy("qwen 读材料文件池 MSDS（每份约 10–20 秒）…");
-  let r; try { r = await api.bomExtract(S.job); } catch (e) { setBusy(""); toast("抽取失败：" + e.message, "err"); return; }
+  setBusy("阿里千问（Qwen3.7-Plus）大语言模型 读材料文件池 MSDS（每份约 10–20 秒）…");
+  let r; try { r = continueMode ? await api.bomExtractMore(S.job) : await api.bomExtract(S.job); } catch (e) { setBusy(""); toast("抽取失败：" + e.message, "err"); return; }
   S.materials = r.materials || [];
   if (!S.materials.length) {
     setBusy("");
     toast("文件池里没读到可用的 MSDS。注意：RoHS/REACH 等是报告不算材质源；若某 PDF 读不出文字也会漏(见下方类型标注)。", "err");
     renderPool(); return;
   }
-  autoResolveAll(); afterExtract();
+  autoResolveAll();
+  const added = r._added;
+  continueMode = false;
+  afterExtract();
+  if (added != null) toast(added ? `已合并：新增 ${added} 个材质（原有材质与修改保留）` : "无新材质（文件可能已在或非 MSDS）", added ? "ok" : "info");
+}
+
+// 继续上传材料(防业务员传一半就确认): 回到上传界面, 保留当前材质表; 再抽走合并端点
+function goUploadMore() {
+  continueMode = true;
+  $("workspace").style.display = "none";
+  $("uploadbar").style.display = "";
+  const b = $("backtobom"); if (b) b.style.display = "";
+  renderPool();
+}
+
+function backToBom() {                  // 不新增, 返回材质表(沿用现有 S.materials)
+  continueMode = false;
+  const b = $("backtobom"); if (b) b.style.display = "none";
+  if (S.materials.length) afterExtract();
 }
 
 async function renderPool() {                                      // 材料文件池实时跟踪(UI上传/直拖都进同一池)
@@ -247,6 +271,7 @@ function renderToolbar() {
   const seg = (v, t) => `<button class="seg-btn ${f === (v || "all") ? "on" : ""}" data-filter="${v}">${t}</button>`;
   $("toolbar").innerHTML = `
     <span class="tb-grp"><b class="tb-lbl">增/批量</b>
+      <button id="moreupload" class="moreupload-btn">+ 继续上传材料</button>
       <button id="addpart">+ 手动添加零件</button>
       <button id="addmanual">+ 手动补材质</button>
       <select id="batchpart"><option value="">批量设零件▾</option>${parts().map((p) => `<option>${esc(p)}</option>`).join("")}<option value="__new__">➕新建…</option></select>
@@ -257,6 +282,7 @@ function renderToolbar() {
     <input id="search" placeholder="搜索 材质/原文/源文件" value="${esc(S.view.q)}">
     <button id="showlog" class="folder-btn" title="本单全部人工修改的审计留痕">📋 修改记录</button>`;
   $("addpart").onclick = addPart;
+  $("moreupload").onclick = goUploadMore;
   $("showlog").onclick = showLog;
   $("addmanual").onclick = addManual;
   $("passallbom").onclick = () => { S.materials.forEach((m) => { if (!m.豁免) m.已核对 = true; }); save(); render(); };  // 一键核对所有(非豁免)

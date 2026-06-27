@@ -26,7 +26,7 @@ async function onUpload(e) {
   const up = await api.uploadDrawing(f);
   S.job = up.job_id; S.pages = up.pages;
   history.replaceState(null, "", "?job=" + encodeURIComponent(S.job));   // job 写URL, 跨页带得走
-  setBusy("qwen-vl 读图中(首次约 10–20 秒)…");
+  setBusy("阿里千问（Qwen3.7-Plus）大语言模型 读图中(首次约 10–20 秒)…");
   S.data = await api.extract(S.job);
   await afterExtract();
 }

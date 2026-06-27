@@ -18,9 +18,9 @@
   <div class="busy" id="busy" style="display:none"></div>
 
   <div class="uploadbar" id="uploadbar">
-    <p class="tip">这步<b>只需各材料的 MSDS</b>——qwen 读后自动提出材质清单。两种方式任选或混用，<b>都进同一个材料文件池</b>（<code>materials\</code>）：在软件里选，或直接把散落各处的文件拖进文件夹。</p>
     <div class="upload-row">
-      <label class="uploadbtn">＋ 在软件里选 MSDS（可多选）
+      <button id="backtobom" class="uploadbtn alt" style="display:none">← 返回材质表（不新增）</button>
+      <label class="uploadbtn">＋ 上传所有相关文件（可多选）
         <input type="file" id="file" accept="application/pdf" multiple hidden>
       </label>
       <span class="or">或</span>
@@ -28,11 +28,11 @@
     </div>
     <div class="pool-tracker" id="pooltracker"></div>
     <div class="prep-list">
-      <div class="prep-head">📋 整套承认书最终需要的文件（心里有数即可，逐步补）</div>
+      <div class="prep-head">📋 整套承认书最终需要的文件</div>
       <div class="prep-grid">
         <span class="prep-now">核心料 MSDS<small>本步必传</small></span>
-        <span>每材质 RoHS / REACH / SVHC<small>④按槽补</small></span>
-        <span>部件承认书 / UL / 信赖性<small>④补充</small></span>
+        <span>每材质 RoHS / REACH / SVHC<small>建议填，但挂文件时可补</small></span>
+        <span>部件承认书 / UL / 信赖性<small>建议填，但挂文件时可补</small></span>
         <span>包装 / 出货 / 图纸<small>图纸第①步已传</small></span>
       </div>
     </div>

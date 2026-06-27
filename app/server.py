@@ -142,6 +142,35 @@ def bom_extract(job: str):
     return result
 
 
+@app.post("/api/bom/{job}/extract-more")
+def bom_extract_more(job: str):
+    """继续上传后再抽(防业务员传一半就确认): 全池重新提议, 按 源文件/材质原文 合并——
+    已有(可能已人工编辑)的材质原样保留, 只追加新文件带出的新材质。返回含 _added 计数。"""
+    from hitl.material_extract import propose_bom_from_pile
+    cached = state.load_json(job, "stage2_bom.json", {}) or {}
+    existing = list(cached.get("materials") or [])
+    seen_src = {(m.get("源文件") or "").strip() for m in existing if (m.get("源文件") or "").strip()}
+    seen_raw = {(m.get("材质原文") or m.get("材质") or "").strip() for m in existing}
+    added = 0
+    for p in propose_bom_from_pile(state.materials_dir(job)):
+        src = (p.get("源文件") or "").strip()
+        raw = (p.get("材质原文") or p.get("材质") or "").strip()
+        if (src and src in seen_src) or (not src and raw in seen_raw):
+            continue                                   # 该源文件/材质已在→不动(保人工编辑)
+        p.setdefault("零件", "")
+        p.setdefault("材质类别", "")
+        p.setdefault("已核对", False)
+        existing.append(p)
+        added += 1
+        if src:
+            seen_src.add(src)
+        if raw:
+            seen_raw.add(raw)
+    result = {"job": job, "materials": existing, "confirmed": cached.get("confirmed", False), "_added": added}
+    state.save_json(job, "stage2_bom.json", result)
+    return result
+
+
 @app.get("/api/bom/{job}/state")
 def bom_state(job: str):
     s = state.load_json(job, "stage2_bom.json")

@@ -51,6 +51,10 @@ export async function bomExtract(job) {
   return _json(`/api/bom/${job}/extract`, { method: "POST" });
 }
 
+export async function bomExtractMore(job) {                 // 继续上传后再抽(合并保留已编辑)
+  return _json(`/api/bom/${job}/extract-more`, { method: "POST" });
+}
+
 export async function getBomState(job) {
   return _json(`/api/bom/${job}/state`);
 }

@@ -39,6 +39,9 @@
 /* 工具行(sticky) */
 .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 0; position: sticky; top: 0; background: #f3f4f6; z-index: 5; border-bottom: 1px solid #e5e7eb; }
 .toolbar button, .toolbar select, .toolbar input { font-size: 13px; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; cursor: pointer; }
+.toolbar .passall-btn { background: var(--c-ok); color: #fff; border-color: var(--c-ok); }   /* 修: .toolbar button 白底覆盖绿底→白字白底=空框 */
+.toolbar .passall-btn:hover { background: #15803d; }
+.toolbar .moreupload-btn { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; font-weight: 600; }   /* 继续上传材料: 蓝调突出 */
 .toolbar label { font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
 #search { min-width: 180px; cursor: text; }
 .tb-grp { display: inline-flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid var(--c-line); }
