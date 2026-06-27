@@ -74,3 +74,20 @@ def test_order_parts按持久化序():
 def test_set_part_order去重保序(tmp_path, monkeypatch):
     monkeypatch.setattr(dicts, "DATA", str(tmp_path))
     assert dicts.set_part_order(["导线", "锡", "导线", " "]) == ["导线", "锡"]
+
+
+# ── 成长型归属学习(在线: 操作员确认→泛化→建议变准) ──
+def test_learn_assign泛化与无误报(tmp_path):
+    import hitl.dicts as D
+    old = D.DATA
+    D.DATA = str(tmp_path)
+    try:
+        D.learn_assign("XH-T21盐雾报告 SHAEC25001.pdf", 零件="胶座端子")
+        D.learn_assign("1061 系列承认书(1).pdf", 材质="镀锡铜", 零件="导线")
+        # 同型号不同流水号/日期→泛化命中(去serial/date后靠型号码/类型词)
+        assert D.lookup_assign("XH-T21盐雾报告 SHAEC99999 20260601.pdf").get("零件") == "胶座端子"
+        assert D.lookup_assign("1061测试报告 ABC123456.pdf").get("零件") == "导线"
+        assert D.lookup_assign("1061测试报告 ABC123456.pdf").get("材质") == "镀锡铜"
+        assert D.lookup_assign("完全无关XYZ.pdf") == {}            # 不误报
+    finally:
+        D.DATA = old

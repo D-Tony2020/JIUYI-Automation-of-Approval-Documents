@@ -280,6 +280,21 @@ async def filetree_confirm(job: str, request: Request):
     s = state.load_json(job, "stage3_filetree.json") or state.load_json(job, "stage2_bom.json", {})
     s.update(body); s["confirmed_filetree"] = True
     state.save_json(job, "stage3_filetree.json", s)
+    try:                                              # 成长型: 学习本单确认的报告归属(操作员真值→下单建议更准)
+        from hitl import dicts
+        for m in s.get("materials", []):
+            if m.get("豁免"):
+                continue
+            fz = m.get("files") or {}
+            for typ in ("MSDS", "RoHS", "REACH", "SVHC", "其他"):
+                v = fz.get(typ)
+                for f in ([v] if isinstance(v, str) else (v or [])):
+                    if f:
+                        dicts.learn_assign(f, 材质=m.get("材质"), 零件=m.get("零件"))
+        for fn, 零件 in (s.get("部件归属") or {}).items():
+            dicts.learn_assign(fn, 零件=零件)
+    except Exception:
+        pass
     proj = state.load_json(job, "project.json", {"job": job})
     proj["step"] = 5
     state.save_json(job, "project.json", proj)

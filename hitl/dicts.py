@@ -11,7 +11,8 @@ import re
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _FILES = {"alias": "材质简称字典.json", "catpart": "材质类别零件字典.json",
-          "supplier": "供应商历史.json", "part_order": "零件顺序.json"}
+          "supplier": "供应商历史.json", "part_order": "零件顺序.json",
+          "assign": "归属学习.json"}                  # 报告归属在线学习(成长型)
 
 
 def _path(kind):
@@ -68,6 +69,58 @@ def resolve_material(原文, alias=None, catpart=None):
     std = std_name(原文, alias)
     info = catpart.get(std, {}) or {}
     return {"标准名": std, "材质类别": info.get("材质类别", ""), "零件": info.get("零件", "")}
+
+
+def _learn_keys(filename):
+    """报告文件名→可泛化稳定关键词(型号码/类型词/供应商); 去日期与长流水号(否则每单唯一不可学)。"""
+    base = os.path.splitext(os.path.basename(str(filename or "")))[0]
+    base = re.sub(r"20\d{2}[.\-/年]?\d{0,2}[.\-/月]?\d{0,2}", " ", base)   # 去日期
+    base = re.sub(r"\d{6,}", " ", base)                                     # 去长流水号(CANEC26012090003)
+    keys = set()
+    for m in re.findall(r"[A-Za-z]{1,}-?\d+[A-Za-z0-9\-]*", base):          # 字母型号码 XH-T21 / A2501
+        if 2 <= len(m) <= 14:
+            keys.add(m.upper())
+    for m in re.findall(r"(?<![A-Za-z\d])\d{3,5}(?![A-Za-z\d])", base):     # 纯数字型号码 1061(已去日期/长流水号)
+        keys.add(m)
+    for w in ("盐雾", "高温", "老化", "信赖", "热缩", "套管", "镀锡", "端子", "胶座", "白色", "黑色",
+              "油墨", "CANEC", "SHAEC", "SZXEC", "正崴", "联和", "领飞", "双鸿"):
+        if w in base or w.lower() in base.lower():
+            keys.add(w)
+    return keys
+
+
+def learn_assign(filename, 材质=None, 零件=None):
+    """学习报告归属(操作员④确认的=真值, 成长型): 文件名关键词→材质/零件 投票计数。"""
+    keys = _learn_keys(filename)
+    if not keys or (not (材质 or "").strip() and not (零件 or "").strip()):
+        return
+    t = _load("assign", {})
+    for k in keys:
+        slot = t.setdefault(k, {"材质": {}, "零件": {}})
+        for fld, val in (("材质", 材质), ("零件", 零件)):
+            v = (val or "").strip()
+            if v:
+                slot[fld][v] = slot[fld].get(v, 0) + 1
+    _save("assign", t)
+
+
+def lookup_assign(filename):
+    """查学习字典: 文件名关键词→票数最高的 材质/零件(跨关键词累加投票)。无→{}。"""
+    keys = _learn_keys(filename)
+    if not keys:
+        return {}
+    t = _load("assign", {})
+    agg = {"材质": {}, "零件": {}}
+    for k in keys:
+        slot = t.get(k) or {}
+        for fld in ("材质", "零件"):
+            for v, c in (slot.get(fld) or {}).items():
+                agg[fld][v] = agg[fld].get(v, 0) + c
+    out = {}
+    for fld in ("材质", "零件"):
+        if agg[fld]:
+            out[fld] = max(agg[fld].items(), key=lambda kv: kv[1])[0]
+    return out
 
 
 def learn_alias(原文, std):

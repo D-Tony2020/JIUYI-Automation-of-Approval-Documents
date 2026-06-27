@@ -144,9 +144,16 @@ def _part_category(materials):
 
 
 def _infer_part(base, materials):
-    """单报告→零件(复用 file_link 内容/颜色匹配)。型号码命名(1061/盐雾)推不出→空。"""
+    """单报告→零件: 学习字典优先(成长型, 解型号码1061/盐雾) → file_link 内容/颜色匹配兜底。"""
     if not materials:
         return ""
+    try:                                            # 学习字典(操作员历史确认)
+        from hitl import dicts
+        la = dicts.lookup_assign(base)
+        if la.get("零件"):
+            return la["零件"]
+    except Exception:
+        pass
     try:
         from hitl.file_link import suggest_for
         return ((suggest_for(base, "其他", materials)) or {}).get("零件", "")

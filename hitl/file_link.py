@@ -105,6 +105,15 @@ def suggest_for(filename, typ, materials):
     fn = _norm(filename)
     fcol = _color(filename)
     col = _TYPE_COL.get(typ, "L")
+    try:                                             # ⓪ 学习字典优先(成长型: 操作员历史确认的归属)
+        from hitl import dicts
+        la = dicts.lookup_assign(filename)
+        if la.get("材质"):
+            for i, m in enumerate(materials):
+                if not m.get("豁免") and (m.get("材质") or "").strip() == la["材质"]:
+                    return {"idx": i, "材质": m.get("材质", ""), "零件": m.get("零件", ""), "col": col, "据": "学"}
+    except Exception:
+        pass
     best, bs = None, 0
     for i, m in enumerate(materials):                # ① 名/源文件 distinctive token(主)
         if m.get("豁免"):
