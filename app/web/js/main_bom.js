@@ -259,7 +259,7 @@ function block(i, reasons) {
     return `<span class="rohs-pill ${bad ? "bad" : "ok"}">${k}:${esc(v) || "—"}</span>`;
   }).join("");
   return `<div class="block ${reasons.length ? "warn" : ""}">
-    <div class="block-head">报告 ${esc(m.报告编号) || "(无报告号)"} · ${esc(m.报告日期) || "—"} · 源:${esc(m.源文件) || "—"} · 无CAS行标黄请核/删</div>
+    <div class="block-head">报告 ${esc(m.报告编号) || "(无报告号)"} · ${esc(m.报告日期) || "—"} · 源:${m.源文件 ? `<a class="srclink" data-src="${esc(m.源文件)}" title="点击打开源文件核对">${esc(m.源文件)}</a>` : "—"} · 无CAS行标黄请核/删</div>
     <table class="comp"><tr><th>成份</th><th>CAS</th><th>重量%</th><th></th></tr>${rows}</table>
     <button class="exbtn" data-addc="${i}">+ 增成分行</button>
     <div class="rohs">${ro}</div>
@@ -334,6 +334,11 @@ function bind() {
   document.querySelectorAll(".cmp").forEach((el) => el.onchange = () => editComp(el.dataset.c, el.value));
   document.querySelectorAll("[data-delc]").forEach((el) => el.onclick = () => delComp(el.dataset.delc));
   document.querySelectorAll("[data-addc]").forEach((el) => el.onclick = () => addComp(+el.dataset.addc));
+  document.querySelectorAll(".srclink").forEach((el) => el.onclick = (e) => {   // 点源文件→默认阅读器打开核对
+    e.stopPropagation();
+    api.openMaterialFile(S.job, el.dataset.src).then((r) => { if (r && !r.ok) toast("打开失败：" + (r.err || "源文件不存在"), "err"); })
+      .catch((err) => toast("打开失败：" + err.message, "err"));
+  });
   $("gatebtn").onclick = onConfirm;
 }
 

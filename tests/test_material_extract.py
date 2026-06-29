@@ -76,3 +76,19 @@ def test_名称去料号留品类():
     from hitl.drawing_extract import _clean_name
     assert _clean_name("SB120420BLCN0009导线") == "导线"   # 去久益料号串, 留品类(golden材质表A2/FAI均'导线')
     assert _clean_name("导线") == "导线"
+
+
+def test_文件名材质兜底_端子磷铜():
+    # 根因回归: 正文抽成产品名'端子'(字典死路) → 文件名'磷铜'兜底 → 磷青铜
+    from hitl.material_extract import _apply_filename_material_hint
+    prop = {"材质": "端子", "材质原文": "端子"}
+    _apply_filename_material_hint(prop, "MSDS 端子（磷铜）(1).pdf")
+    assert prop["材质"] == "磷青铜" and prop.get("材质名来源") == "文件名兜底"
+
+
+def test_文件名兜底不误伤正文命中():
+    # 正文材质已命中字典(PVC)→信任正文, 不被文件名覆盖
+    from hitl.material_extract import _apply_filename_material_hint
+    prop = {"材质": "PVC塑胶粒", "材质原文": "PVC塑胶粒"}
+    _apply_filename_material_hint(prop, "无关 磷铜 文件名.pdf")
+    assert prop["材质"] == "PVC塑胶粒" and "材质名来源" not in prop

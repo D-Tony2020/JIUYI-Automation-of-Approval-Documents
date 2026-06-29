@@ -101,6 +101,8 @@
 .block { margin: 6px 0 2px; padding: 6px 8px; background: #f9fafb; border-radius: 4px; font-size: 12px; }
 .block.warn { background: #fffbeb; border: 1px solid #fde68a; }
 .block-head { color: #6b7280; margin-bottom: 4px; }
+.srclink { color: #2563eb; text-decoration: underline; cursor: pointer; }
+.srclink:hover { color: #1d4ed8; }
 .block-warn { color: #b45309; font-weight: bold; margin-bottom: 4px; }
 table.comp { border-collapse: collapse; width: 100%; margin-bottom: 4px; }
 table.comp th, table.comp td { border: 1px solid #e5e7eb; padding: 2px 6px; text-align: left; }

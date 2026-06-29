@@ -572,6 +572,25 @@ def open_materials(job: str):
         return {"ok": False, "err": str(e), "path": d}
 
 
+@app.post("/api/order/{job}/open-file")
+async def open_file(job: str, request: Request):
+    """打开本单某源文件(materials/<name>)给操作员核对——用默认PDF阅读器。
+    路径安全: 仅取 basename, 必须确在 materials/ 内, 防穿越。"""
+    if not state.assert_job(job):
+        raise HTTPException(400, "非法单号")
+    body = await request.json()
+    name = os.path.basename(str(body.get("name") or ""))       # 只收 basename, 去路径
+    d = state.materials_dir(job)
+    fp = os.path.join(d, name)
+    if not name or os.path.dirname(os.path.abspath(fp)) != os.path.abspath(d) or not os.path.isfile(fp):
+        raise HTTPException(404, "源文件不存在")
+    try:
+        os.startfile(fp)                                       # noqa: Windows-only(本产品形态)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "err": str(e)}
+
+
 @app.get("/api/order/{job}/pool")
 def pool(job: str):
     """材料文件池跟踪: 列 materials/ 现有文件 + 概括识别类型(UI上传/直拖都进同一池, 实时可见)。"""

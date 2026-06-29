@@ -87,6 +87,12 @@ export async function openMaterials(job) {
   return _json(`/api/order/${job}/open-materials`, { method: "POST" });
 }
 
+export async function openMaterialFile(job, name) {       // 打开某源文件给操作员核对
+  return _json(`/api/order/${job}/open-file`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
+  });
+}
+
 export async function pool(job) {
   return _json(`/api/order/${job}/pool`);
 }

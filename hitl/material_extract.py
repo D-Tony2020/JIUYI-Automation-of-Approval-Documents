@@ -189,6 +189,27 @@ def candidate_msds(materials_dir):
     return out
 
 
+def _apply_filename_material_hint(prop, filename):
+    """文件名材质兜底: 正文抽出的材质是字典死路(std_name==自身, 多为产品名/部件词如'端子'),
+    而文件名带已知材质提示(如 'MSDS 端子（磷铜）'的'磷铜')→用文件名解析的标准料覆盖。
+    根因: 个别MSDS正文以产品名(端子/TERMINAL)自称、料名写成泛称(铜/黄铜), 真材质只在文件名。
+    仅"正文未命中字典 且 文件名命中已知料"才覆盖, 信任正文优先, 不误伤正常件。"""
+    try:
+        import os
+        from hitl import dicts
+        raw = (prop.get("材质原文") or prop.get("材质") or "").strip()
+        if not raw or dicts.std_name(raw) != raw:        # 正文材质已命中字典→信任正文
+            return
+        stem = os.path.splitext(os.path.basename(filename))[0]
+        std_f = dicts.std_name(stem)
+        if std_f and std_f != stem and std_f != raw:     # 文件名命中已知料(且不同于正文死路词)
+            prop["材质"] = std_f
+            prop["材质原文"] = std_f
+            prop["材质名来源"] = "文件名兜底"             # 溯源标记(前端可提示"据文件名")
+    except Exception:
+        pass
+
+
 def propose_bom_from_pile(materials_dir, provider=PROVIDER, model=MODEL):
     """files-first·B提议引擎: 材料堆 → C分类 → 真MSDS(内容确认) → B提议材质清单。
 
@@ -202,6 +223,7 @@ def propose_bom_from_pile(materials_dir, provider=PROVIDER, model=MODEL):
         except Exception:
             continue
         prop["源文件"] = base
+        _apply_filename_material_hint(prop, base)        # 文件名材质兜底(端子（磷铜）正文→'端子'死路→磷青铜)
         props.append(prop)
     return props
 
