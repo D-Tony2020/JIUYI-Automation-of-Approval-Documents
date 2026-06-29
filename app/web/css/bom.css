@@ -116,6 +116,10 @@ table.comp th, table.comp td { border: 1px solid #e5e7eb; padding: 2px 6px; text
 .psup { width: 130px; font-size: 12px; }
 select.need { border-color: #ef4444; color: #b91c1c; }
 table.comp input.cmp { width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; font-size: 12px; padding: 1px 3px; }
+/* 字典推断值(非MSDS直接提取)→琥珀"荐·待核对"; 手改/标记通过即转正常 */
+.inp.inf, select.inf, input.cmp.inf { border-color: #f59e0b !important; background: #fffbeb !important; color: #b45309 !important; }
+.inf-wrap { display: inline-flex; align-items: center; }
+.inf-badge { font-size: 9px; background: #fef3c7; color: #92400e; border-radius: 7px; padding: 0 4px; margin-left: 3px; white-space: nowrap; }
 table.comp input.cmp:focus { border-color: #93c5fd; background: #fff; }
 table.comp tr.nocas td { background: #fffbeb; }
 table.comp tr.nocas input.cmp { color: #b45309; }
