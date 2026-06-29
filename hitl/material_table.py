@@ -23,8 +23,16 @@ except Exception:
 
 
 def normalize_component_name(材质, cas, raw):
-    """按 (材质,CAS) 查标准词表归一成份名；查不到则保留 MSDS 原文(交人工)。"""
-    std = _COMP_DICT.get((材质 or "").strip(), {}).get((cas or "").strip())
+    """成份名归一: CAS规范库(全局, 7440-50-8→铜(Cu)) 优先 → 旧成份名称词表(材质级) → MSDS原文(交人工)。"""
+    cas = (cas or "").strip()
+    try:                                       # 全局CAS规范库(成长型, dicts层)
+        from hitl import dicts
+        g = dicts.cas_name(cas)
+        if g:
+            return g
+    except Exception:
+        pass
+    std = _COMP_DICT.get((材质 or "").strip(), {}).get(cas)   # 旧词表(材质级)兜底
     return std if std else (raw or "").strip()
 
 MAT_SHEET = "7.材质成分展开表 "

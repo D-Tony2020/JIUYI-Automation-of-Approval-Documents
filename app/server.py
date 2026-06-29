@@ -208,6 +208,17 @@ async def bom_confirm(job: str, request: Request):
                                for b in acc["pending"]]
     except Exception:
         pass                                     # 链/抽失败不挡放行(M2.4 可纯人工拖)
+    try:                                          # 成长: 学材质成份清单 + CAS↔规范名(操作员③确认的最终态, 自动跟踪增删)
+        from hitl import dicts as _d
+        for m in s.get("materials", []):
+            if m.get("豁免"):
+                continue
+            comps = m.get("成份") or []
+            _d.learn_material_comp(m.get("材质"), comps)
+            for c in comps:
+                _d.learn_cas_name(c.get("CAS") or c.get("cas"), c.get("成份名称") or c.get("成份名"))
+    except Exception:
+        pass
     state.save_json(job, "stage2_bom.json", s)
     proj = state.load_json(job, "project.json", {"job": job})
     proj["step"] = 3

@@ -131,6 +131,11 @@ function autoResolveAll() {
     if (!(m.材质 || "").trim() || m.材质 === raw) m.材质 = r.标准名;
     if (!(m.材质类别 || "").trim()) m.材质类别 = r.材质类别;
     if (!(m.零件 || "").trim()) m.零件 = r.零件;
+    const lib = (S.dicts.comp || {})[m.材质];                 // 材质成份库预填: 仅当本料一条成份都没抽到(同种材质跨单大概率一样, 操作员核对)
+    if (lib && lib.length && !(m.成份 || []).length) {
+      m.成份 = lib.map((c) => ({ 成份名称: c.成份名 || c.成份名称 || "", CAS: c.CAS || "",
+                                "重量%": "", 无CAS: !c.CAS, _来源: "成份库预填" }));
+    }
   }
 }
 
@@ -412,7 +417,15 @@ function editComp(token, val) {
   const [i, j, field] = token.split("|");
   const c = S.materials[+i].成份[+j];
   c[field] = (field === "重量%") ? wtParse(val) : val.trim();   // 重量%输的是百分数→存小数占比(与材质表口径一致)
-  if (field === "CAS") c.无CAS = !c.CAS || ["/", "-"].includes(c.CAS);
+  const cn = S.dicts.casname || {};
+  if (field === "CAS") {
+    c.无CAS = !c.CAS || ["/", "-"].includes(c.CAS);
+    if (cn[c.CAS] && !(c.成份名称 || "").trim()) c.成份名称 = cn[c.CAS];   // CAS→规范名(双向自动带, 仅空时填不覆盖)
+  }
+  if (field === "成份名称" && c.成份名称 && !(c.CAS || "").trim()) {
+    const cas = Object.keys(cn).find((k) => cn[k] === c.成份名称);          // 名→CAS(反查)
+    if (cas) { c.CAS = cas; c.无CAS = false; }
+  }
   save(); render();
 }
 

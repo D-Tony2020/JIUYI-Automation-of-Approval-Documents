@@ -18,7 +18,9 @@ _SEED = os.path.join(userdata.resource_base(), "hitl", "data")
 _FILES = {"alias": "材质简称字典.json", "catpart": "材质类别零件字典.json",
           "supplier": "供应商历史.json", "part_order": "零件顺序.json",
           "assign": "归属学习.json",                  # 报告归属在线学习(成长型)
-          "category": "品类词字典.json"}              # 封面D12品类词学习(成长型: 名称→品类)
+          "category": "品类词字典.json",              # 封面D12品类词学习(成长型: 名称→品类)
+          "comp": "材质成份字典.json",                # 材质→成份清单(成长型: 操作员增删自动跟踪; 并入旧成份名称词表)
+          "casname": "CAS规范字典.json"}              # CAS↔规范成份名(双向; 7440-50-8↔铜(Cu))
 
 
 def ensure_seeded():
@@ -290,8 +292,60 @@ def order_parts(parts, order=None):
     return sorted(parts, key=lambda p: (idx.get(p, len(order)),))
 
 
+# ── 成份知识(材质成份库 + CAS规范库, 串成"材质→成份→CAS→规范名"链) ──
+def material_comps(材质):
+    """材质→常见成份清单 [{成份名, CAS}]。同种材质跨单成份大概率一样, 供③预填/核对。"""
+    return _load("comp", {}).get(str(材质 or "").strip(), [])
+
+
+def learn_material_comp(材质, 成份列表):
+    """记忆材质的成份清单(操作员③确认的最终态=真值): 整表替换=自动跟踪增删。"""
+    材质 = str(材质 or "").strip()
+    if not 材质 or not 成份列表:
+        return
+    clean, seen = [], set()
+    for c in 成份列表:
+        名 = str(c.get("成份名") or c.get("成份名称") or "").strip()
+        cas = str(c.get("CAS") or c.get("cas") or "").strip()
+        if (not 名 and not cas) or (名, cas) in seen:
+            continue
+        seen.add((名, cas))
+        clean.append({"成份名": 名, "CAS": cas})
+    t = _load("comp", {})
+    t[材质] = clean
+    _save("comp", t)
+
+
+def cas_name(cas):
+    """CAS→规范成份名(全局)。无→''。"""
+    return _load("casname", {}).get(str(cas or "").strip(), "")
+
+
+def name_cas(名):
+    """规范成份名→CAS(反查, 双向)。无→''。"""
+    名 = str(名 or "").strip()
+    if not 名:
+        return ""
+    for cas, n in _load("casname", {}).items():
+        if n == 名:
+            return cas
+    return ""
+
+
+def learn_cas_name(cas, 名):
+    """记忆 CAS↔规范名: 仅合法CAS、且该CAS未登记时新增(种子规范名优先, 防操作员随手简写覆盖'铜(Cu)')。"""
+    cas, 名 = str(cas or "").strip(), str(名 or "").strip()
+    if not cas or not 名 or not re.match(r"^\d{2,7}-\d{2}-\d$", cas):
+        return
+    t = _load("casname", {})
+    if cas not in t:
+        t[cas] = 名
+        _save("casname", t)
+
+
 def all_dicts():
-    """前端一次拉全(BOM 页 resolve + 下拉 + 零件顺序)。"""
+    """前端一次拉全(BOM 页 resolve + 下拉 + 零件顺序 + 成份/CAS 自动带)。"""
     return {"alias": alias_table(), "catpart": catpart_table(),
             "suppliers": supplier_history(), "part_order": part_order(),
-            "assign": assign_table()}                 # 归属学习(可见可清理)
+            "assign": assign_table(),                 # 归属学习(可见可清理)
+            "comp": _load("comp", {}), "casname": _load("casname", {})}   # 材质成份库 + CAS规范库
