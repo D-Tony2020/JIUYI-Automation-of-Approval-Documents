@@ -18,6 +18,24 @@ export function groupByPart(materials) {
   return { parts, order, unclaimed };
 }
 
+export function syncPartSuppliers(materials) {
+  // 供应商是【零件级】属性, 但反范式化存在每个材质上(m.供应商)。新增/拖入材质改了 m.零件 却没继承
+  // 该零件已有的供应商 → 材质级 m.供应商 仍空 → materialMissing 误报"缺供应商", 而 UI 只有零件级
+  // 供应商框、无法单材质修改 → 死结。此函数把每个零件的供应商(取该零件首个非空)同步到该零件全部材质,
+  // 自愈维持"同零件共享一个供应商"的不变式。render/save/confirm 前都跑。返回是否有改动。
+  const sup = {};
+  for (const m of materials) {
+    const p = (m.零件 || "").trim();
+    if (p && (m.供应商 || "").trim() && !(p in sup)) sup[p] = m.供应商.trim();
+  }
+  let changed = false;
+  for (const m of materials) {
+    const p = (m.零件 || "").trim();
+    if (p && sup[p] && (m.供应商 || "").trim() !== sup[p]) { m.供应商 = sup[p]; changed = true; }
+  }
+  return changed;
+}
+
 export function detectDups(materials) {
   // 同归一材质名 ≥2(未豁免) → [[idx,...]]。供联标, 不自动合并(CANEC色号料名会漏判, 另有手动合并兜底)。
   const by = {};

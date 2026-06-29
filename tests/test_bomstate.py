@@ -64,3 +64,29 @@ def test_allMissing齐全放行():
 def test_cardState豁免():
     r = _node("console.log(JSON.stringify(m.cardState({材质:'X',豁免:true},0)));")
     assert r == "exempt"
+
+
+def test_syncPartSuppliers_新材质继承零件供应商():
+    # 回归: 零件已选供应商, 新增材质(供应商空)挂到同零件 → 自动继承, 不再"未选择供应商"
+    r = _node("const ms=[{材质:'磷青铜',零件:'端子',供应商:'正崴'},{材质:'新料',零件:'端子',供应商:''}];"
+              "m.syncPartSuppliers(ms);console.log(JSON.stringify(ms.map(x=>x.供应商)));")
+    assert r == ["正崴", "正崴"]
+
+
+def test_syncPartSuppliers_修复后不再误报缺供应商():
+    r = _node("const ms=[{材质:'磷青铜',零件:'端子',材质类别:'端子',供应商:'正崴',已核对:true},"
+              "{材质:'新料',零件:'端子',材质类别:'端子',供应商:'',已核对:true}];"
+              "m.syncPartSuppliers(ms);console.log(JSON.stringify(m.allMissing(ms)));")
+    assert not any("供应商" in s for s in r)
+
+
+def test_syncPartSuppliers_不同零件互不串():
+    r = _node("const ms=[{材质:'a',零件:'端子',供应商:'正崴'},{材质:'b',零件:'导线',供应商:'立讯'},{材质:'c',零件:'导线',供应商:''}];"
+              "m.syncPartSuppliers(ms);console.log(JSON.stringify(ms.map(x=>x.供应商)));")
+    assert r == ["正崴", "立讯", "立讯"]
+
+
+def test_syncPartSuppliers_待认领不分配供应商():
+    r = _node("const ms=[{材质:'a',零件:'',供应商:''}];"
+              "m.syncPartSuppliers(ms);console.log(JSON.stringify(ms[0].供应商));")
+    assert r == ""
