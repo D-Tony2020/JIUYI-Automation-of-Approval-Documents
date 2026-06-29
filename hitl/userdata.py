@@ -44,6 +44,73 @@ def user_data_dir():
 
 USER_DATA_DIR = user_data_dir()
 
+# ── 应用配置(API key 等): 存 %APPDATA%/config.json(UI可改·跨重装继承), 取消强制环境变量 ──
+CONFIG_PATH = os.path.join(USER_DATA_DIR, "config.json")
+_DEFAULT_KEY_FILE = os.path.join(resource_base(), "hitl", "data", "_api_key.txt")  # 随包默认(gitignore·不入库)
+
+
+def atomic_write_json(path, data):
+    """写 JSON。优先原子写(临时文件+os.replace)防写一半坏档; 但 os.replace 跨设备报 WinError17——
+    本机 %APPDATA%\\Moore 被 OneDrive 重定向到别的卷, rename 即跨设备→退回直接覆盖写(放弃原子性,
+    远比静默丢数据强)。学习库/配置持久化都走这里(否则 OneDrive 机上学习/保存全部静默失败)。"""
+    import json
+    text = json.dumps(data, ensure_ascii=False, indent=1)
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    tmp = path + ".tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except OSError:
+        with open(path, "w", encoding="utf-8") as f:   # 跨设备/重定向 → 直接写
+            f.write(text)
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+
+def _load_config():
+    import json
+    try:
+        with open(CONFIG_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def get_api_key():
+    """官方通义/DashScope key 取值优先级: 用户配置(%APPDATA%/config.json) → 随包默认 → 环境变量。
+    不再强制操作员设环境变量——UI 直接填即可(见 set_api_key)。"""
+    k = (_load_config().get("api_key") or "").strip()
+    if k:
+        return k
+    try:
+        with open(_DEFAULT_KEY_FILE, encoding="utf-8") as f:
+            k = (f.read() or "").strip()
+            if k:
+                return k
+    except Exception:
+        pass
+    for env in ("DASHSCOPE_API_KEY", "QWEN_API_KEY"):
+        v = os.environ.get(env)
+        if v:
+            return v
+    return ""
+
+
+def set_api_key(k):
+    """UI 保存 API key → 写 %APPDATA%/config.json(跨设备安全写)。"""
+    cfg = _load_config()
+    cfg["api_key"] = str(k or "").strip()
+    try:
+        atomic_write_json(CONFIG_PATH, cfg)
+    except OSError:
+        pass
+    return cfg["api_key"]
+
 
 def work_base():
     """运行时工作态根(.work 含材料PDF + 产出留档)。WPS COM 要嵌材料PDF、开cell——

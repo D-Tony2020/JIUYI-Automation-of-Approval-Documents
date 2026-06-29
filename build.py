@@ -26,8 +26,8 @@ DEPLOY = """久益-承认书自动化 v%s (%s) — 客户机部署说明
 【硬性要求(不满足则对应功能不可用)】
  1. Windows 10 / 11, 64 位。
  2. 装有 WPS Office 或 Microsoft Excel —— 导出嵌入报告(OLE)走 COM(优先WPS, 回退Excel)。无则导出失败。
- 3. 环境变量 DASHSCOPE_API_KEY —— ①读图纸 + ②读材质 调官方通义千问; 未设置这两步报错。
-    设法: 设置→系统→高级系统设置→环境变量→用户变量→新建 DASHSCOPE_API_KEY。
+ 3. 官方通义千问 API key —— ①读图纸 + ②读材质 用。本包已内置 key, 开箱即用, 无需设环境变量。
+    如需更换: 打开软件首页→展开「⚙ API 设置」→填入新 key→保存(存本机, 跨重装保留)。
  4. 联网访问 dashscope.aliyuncs.com (HTTPS 443)。默认直连; 走公司代理设 JIUYI_PROXY=http://地址:端口。
 
 【软性(有自动兜底, 不影响功能)】

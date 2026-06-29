@@ -36,6 +36,13 @@ PROVIDERS = {
 
 
 def get_api_key(provider: str):
+    try:                                       # UI 配置优先(%APPDATA%/config.json) → 随包默认 → 环境变量
+        from hitl import userdata
+        k = userdata.get_api_key()
+        if k:
+            return k
+    except Exception:
+        pass
     for env in PROVIDERS[provider]["key_env"]:
         v = os.environ.get(env)
         if v:

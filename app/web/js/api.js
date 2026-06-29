@@ -163,6 +163,17 @@ export function photoUrl(job, name) {
   return `/api/order/${job}/photos/raw?name=${encodeURIComponent(name)}`;  // 预览(若需), 当前用本地 blob 预览
 }
 
+// ── API key 配置(取消环境变量, UI直接填; 存%APPDATA%/config.json) ──
+export async function getConfig() {
+  return _json("/api/config");                          // {api_key, has_key, saved}
+}
+
+export async function saveConfig(api_key) {
+  return _json("/api/config", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ api_key }),
+  });
+}
+
 // ── 全局字典(材质简称/类别零件反查/供应商历史) ──
 export async function getDict() {
   return _json("/api/dict");

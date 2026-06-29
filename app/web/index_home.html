@@ -18,6 +18,18 @@
       <h2>历史记录</h2>
       <a class="newbtn" href="index.html">+ 新建</a>
     </div>
+    <details id="apicfg" class="apicfg">
+      <summary>⚙ API 设置 · 通义/DashScope key</summary>
+      <div class="apicfg-body">
+        <p class="apicfg-tip">读图纸、抽材质用的官方通义大模型 key。已为你预填，可直接用；要换 key 在这里改即可（无需设系统环境变量）。</p>
+        <div class="apicfg-row">
+          <input id="apikey" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          <button id="apikey-eye" type="button" title="显示/隐藏">👁</button>
+          <button id="apikey-save" type="button" class="primary">保存</button>
+        </div>
+        <div id="apikey-status" class="apicfg-status"></div>
+      </div>
+    </details>
     <div id="orderlist"><p class="tip">加载中…</p></div>
   </div>
   <script type="module" src="js/main_home.js"></script>

@@ -70,9 +70,11 @@ def normalize_tol(nom, up, lo):
 
 def extract(drawing_pdf, api_key=None):
     """生图纸 → {品号, 版本, 名称, dimensions:[(中心,+公差,-公差)]}。dimensions 可直灌FAI表。"""
-    api_key = api_key or os.environ.get("DASHSCOPE_API_KEY", "")
     if not api_key:
-        raise RuntimeError("DASHSCOPE_API_KEY 未设置")
+        from hitl import userdata             # UI配置(%APPDATA%) → 随包默认 → 环境变量
+        api_key = userdata.get_api_key()
+    if not api_key:
+        raise RuntimeError("未配置 API key——请在首页「API 设置」里填写")
     data = _parse(_call(_render(drawing_pdf), api_key))
     dims = []
     for d in data.get("FAI尺寸", []):

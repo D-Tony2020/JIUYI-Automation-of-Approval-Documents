@@ -11,7 +11,31 @@ function fmtTime(t) {
   try { const d = new Date(t * 1000); const p = (n) => String(n).padStart(2, "0"); return `${d.getMonth() + 1}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; } catch { return ""; }
 }
 
+async function loadApiConfig() {                          // 首页「API设置」: 预填当前key + 保存到%APPDATA%
+  const inp = document.getElementById("apikey"), st = document.getElementById("apikey-status");
+  const eye = document.getElementById("apikey-eye"), save = document.getElementById("apikey-save");
+  if (!inp) return;
+  if (location.hash === "#api") document.getElementById("apicfg").open = true;   // 深链直达设置
+  try {
+    const c = await api.getConfig();
+    inp.value = c.api_key || "";
+    st.textContent = c.saved ? "✓ 已保存到本机（跨重装保留）" : (c.has_key ? "随包/环境默认已就绪，可在此覆盖" : "⚠ 未配置，请填入官方通义 key 后保存");
+    st.className = "apicfg-status " + (c.has_key ? "ok" : "warn");
+  } catch (e) { st.textContent = "读取失败：" + esc(e.message); st.className = "apicfg-status warn"; }
+  eye.onclick = () => { inp.type = inp.type === "password" ? "text" : "password"; };
+  save.onclick = async () => {
+    save.disabled = true; st.textContent = "保存中…"; st.className = "apicfg-status";
+    try {
+      const r = await api.saveConfig(inp.value.trim());
+      st.textContent = r.has_key ? "✓ 已保存到本机" : "已清空（将回退随包/环境默认）";
+      st.className = "apicfg-status ok";
+    } catch (e) { st.textContent = "保存失败：" + esc(e.message); st.className = "apicfg-status warn"; }
+    finally { save.disabled = false; }
+  };
+}
+
 async function boot() {
+  loadApiConfig();
   if (!document.querySelector("link[rel=icon]")) { const l = document.createElement("link"); l.rel = "icon"; l.href = "favicon.svg"; document.head.appendChild(l); }
   fetch("/api/version").then((r) => r.json()).then((v) => {        // 版本号(右上品牌旁)
     const b = document.querySelector(".brand-name"); if (b && v.version) b.innerHTML = `材料承认书自动生成 <small style="color:#9ca3af">v${v.version}</small>`;

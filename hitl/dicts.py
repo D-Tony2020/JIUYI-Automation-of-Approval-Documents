@@ -51,12 +51,9 @@ def _load(kind, default):
 
 
 def _save(kind, data):
-    os.makedirs(DATA, exist_ok=True)
-    p = _path(kind)
-    tmp = p + ".tmp"                              # 原子写(临时文件+替换), 防写一半坏档
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, p)
+    # 跨设备安全写: os.replace 在 OneDrive 重定向的 %APPDATA% 上报 WinError17 →
+    # 会让学习库静默不持久化(无监督命中的命脉)。统一走 userdata 的兜底直写。
+    userdata.atomic_write_json(_path(kind), data)
 
 
 ensure_seeded()                                  # import 即播种(幂等); 单测覆盖 DATA 后不受影响

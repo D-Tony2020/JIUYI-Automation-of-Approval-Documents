@@ -18,6 +18,10 @@ env/
 # 本单输入（含生久图纸=客户 IP，按安全红线不入 git；run_w3 按需从 golden 重抽）
 本单输入/
 
+# API key（密钥不入库=安全红线；本地存在、随 exe 打包，但永不提交 git）
+hitl/data/_api_key.txt
+config.json
+
 # OS
 .DS_Store
 Thumbs.db

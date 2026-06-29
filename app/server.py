@@ -641,4 +641,19 @@ def version_info():
         return {"version": "?", "app": "久益-承认书自动化", "build": ""}
 
 
+@app.get("/api/config")
+def get_config():
+    """API key 当前值 + 来源(供首页「API设置」预填)。取消强制环境变量。"""
+    cfg_k = (userdata._load_config().get("api_key") or "").strip()
+    k = userdata.get_api_key()
+    return {"api_key": k, "has_key": bool(k), "saved": bool(cfg_k)}
+
+
+@app.post("/api/config")
+async def save_config(request: Request):
+    body = await request.json()
+    k = userdata.set_api_key(body.get("api_key", ""))
+    return {"ok": True, "has_key": bool(k)}
+
+
 app.mount("/", StaticFiles(directory=WEB, html=True), name="web")   # 前端静态, 必须最后挂

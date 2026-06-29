@@ -24,3 +24,18 @@
 .badge.ing { background: var(--c-warn-bg); color: var(--c-warn-t); }
 .contbtn { background: var(--c-ok); color: #fff; padding: 6px 14px; border-radius: var(--r-sm); text-decoration: none; font-size: var(--fs-base); font-weight: bold; }
 .contbtn:hover { background: #15803d; }
+
+/* API设置(取消环境变量, UI直填) */
+.apicfg { margin-top: 22px; border: 1px solid var(--c-line, #e5e7eb); border-radius: var(--r-sm, 6px); background: #fafafa; }
+.apicfg > summary { cursor: pointer; padding: 10px 14px; font-size: var(--fs-base); color: var(--c-mut, #6b7280); user-select: none; }
+.apicfg > summary:hover { color: var(--c-brand, #2563eb); }
+.apicfg-body { padding: 4px 14px 14px; }
+.apicfg-tip { font-size: var(--fs-cap, 12px); color: var(--c-mut, #6b7280); margin: 0 0 8px; line-height: 1.5; }
+.apicfg-row { display: flex; gap: 8px; align-items: center; }
+.apicfg-row input { flex: 1; font-family: ui-monospace, monospace; font-size: 13px; padding: 7px 9px; border: 1px solid #d1d5db; border-radius: var(--r-sm, 6px); }
+.apicfg-row button { padding: 7px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: var(--r-sm, 6px); cursor: pointer; font-size: 13px; }
+.apicfg-row button.primary { background: var(--c-brand, #2563eb); color: #fff; border-color: var(--c-brand, #2563eb); font-weight: 600; }
+.apicfg-row button.primary:hover { background: #1d4ed8; }
+.apicfg-status { font-size: var(--fs-cap, 12px); margin-top: 8px; min-height: 16px; }
+.apicfg-status.ok { color: #065f46; }
+.apicfg-status.warn { color: #b45309; }
